@@ -1,0 +1,14 @@
+parents: ['dspr']
+
+name: 'test-pycharm'
+
+model:
+  _type: factor
+
+  gan_wt: 0
+
+#dataset.kwargs.download = true
+
+#resume = 'test-pycharm_191121-154737'
+#
+#extend = 7

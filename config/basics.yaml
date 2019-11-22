@@ -1,0 +1,73 @@
+parents: ['base']
+
+device: cuda
+seed: 0
+num_workers: 0
+
+output:
+    save_freq: 1
+
+
+#dataset:
+
+
+training:
+    start: 0
+
+    epochs: 40
+
+    print_freq: 50
+
+model:
+    _type: 'wpp'
+
+    nonlin: 'prelu'
+
+    fc: [256, 128, 128]
+
+    channels: [8, 16, 32, 64, 128]
+    kernels: 3
+    factors: 2
+
+    upsampling: 'bilinear'
+    downsampling: 'max'
+
+    latent_dim: 16
+
+    criterion:
+        name: 'bce'
+        reduction: 'sum'
+
+    beta: 100
+
+    disc_gp: 10
+    disc_steps: 4
+
+    gan_wt: 1.e-4
+
+    generator:
+        _type: 'deconv'
+        fc: [128, 128, 256]
+
+        channels: [128, 64, 32, 16, 8]
+
+        output_nonlin: sigmoid
+
+    discriminator:
+        _type: 'conv'
+
+        fc: [128, 64, 16]
+
+    encoder:
+        _type: 'conv'
+
+
+optim:
+    type: 'adam'
+    lr: 4.e-4
+    weight_decay: 0
+    momentum: 0
+    beta1: 0.5
+    beta2: 0.9
+
+
