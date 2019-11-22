@@ -58,6 +58,9 @@ model:
 
         fc: [128, 64, 16]
 
+        optim:
+            lr: 1.2e-3
+
     encoder:
         _type: 'conv'
 

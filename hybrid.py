@@ -65,7 +65,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			self.enc = None
 
 		assert gan_wt == 0 or (len(gen_types) and len(gen_types - {'rec', 'hybrid', 'gen'})==0), 'invalid: {}'.format(gen_types)
-		self.gen_types = gen_types
+		self.gen_types = set(gen_types)
 
 		self.disc_steps = disc_steps if self.disc is not None else 0
 		self.enc_gan = enc_gan and self.enc is not None
@@ -283,7 +283,6 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 	def generate(self, N=1):
 		q = self.sample_prior(N)
 		return self.decode(q)
-
 train.register_model('wpp', Wasserstein_PP)
 
 
@@ -323,7 +322,6 @@ class WPP_VAE(Wasserstein_PP):
 
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
-
 train.register_model('wpp-vae', WPP_VAE)
 
 class Dropin_WPP(Wasserstein_PP):
@@ -350,7 +348,6 @@ class Dropin_WPP(Wasserstein_PP):
 		
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q*sel + hyb*(1-sel)
-
 train.register_model('dropin', Dropin_WPP)
 
 class Dropout_WPP(Dropin_WPP):
@@ -358,7 +355,6 @@ class Dropout_WPP(Dropin_WPP):
 	def hybridize(self, q):
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q * sel
-
 train.register_model('dropout', Dropout_WPP)
 
 class Factor_WPP(Wasserstein_PP):
@@ -422,12 +418,10 @@ class Factor_WPP(Wasserstein_PP):
 			reg = (1-self.prior_wt)*reg + self.prior_wt*reg_prior
 			
 		return reg
-
 train.register_model('factor', Factor_WPP)
 
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
-
 train.register_model('factor-dropin', Dropin_FWAE)
 
 
@@ -444,258 +438,4 @@ def get_name(A):
 
 if __name__ == '__main__':
 	sys.exit(train.main(get_data=get_data, get_model=get_model, get_name=get_name))
-
-
-
-#
-# def get_options():
-# 	parser = train.get_parser()
-#
-# 	parser.add_argument('--gan-wt', type=float, default=.5)
-#
-# 	parser.add_argument('--disc-steps', type=int, default=1)
-# 	parser.add_argument('--disc-lr-factor', type=float, default=1.)
-# 	parser.add_argument('--disc-gp', type=float, default=10.)
-#
-# 	parser.add_argument('--fake-gen', action='store_true')
-# 	parser.add_argument('--fake-hyb', action='store_true')
-# 	parser.add_argument('--no-fake-rec', dest='fake_rec', action='store_false')
-# 	parser.add_argument('--enc-gan', action='store_true')
-#
-# 	parser.add_argument('--prior-wt', type=float, default=0.)
-# 	parser.add_argument('--latent-disc-fc', type=int, default=None, nargs='+')
-#
-# 	parser.add_argument('--beta', type=float, default=None)
-# 	parser.add_argument('--criterion', type=str, default='bce')
-#
-# 	parser.add_argument('--disc-fc', type=int, nargs='+', default=None)
-# 	parser.add_argument('--enc-fc', type=int, nargs='+', default=None)
-#
-# 	parser.add_argument('--disc-lr', type=float, default=None)
-# 	parser.add_argument('--enc-lr', type=float, default=None)
-#
-# 	parser.add_argument('--prob', type=float, default=1)
-# 	parser.add_argument('--prob-max', type=float, default=0)
-#
-# 	parser.add_argument('--disc-optim-type', type=str, default=None)
-# 	parser.add_argument('--enc-optim-type', type=str, default=None)
-#
-# 	# old
-#
-# 	parser.add_argument('--vae-weight', type=float, default=None)
-# 	parser.add_argument('--feature-match', action='store_true')
-# 	parser.add_argument('--noisy-rec', action='store_true')
-# 	parser.add_argument('--noisy-gan', action='store_true')
-# 	parser.add_argument('--pred-std', action='store_true')
-#
-# 	parser.add_argument('--viz-force-gen', action='store_true')
-#
-# 	parser.add_argument('--vae-scale', type=float, default=1)
-# 	parser.add_argument('--gan-scale', type=float, default=1)
-#
-# 	parser.add_argument('--splits', type=int, default=2)
-#
-# 	return parser
-#
-#
-# def get_data(args):
-# 	if not hasattr(args, 'dataroot'):
-# 		args.dataroot = '/is/ei/fleeb/workspace/local_data/'
-#
-# 	dataroot = args.dataroot
-#
-# 	if args.dataset == 'dsprites':
-#
-# 		def fmt(batch):
-# 			batch['imgs'] = torch.from_numpy(batch['imgs']).unsqueeze(0)
-# 			return batch['imgs'].float(), batch['latents_values']
-#
-# 		path = os.path.join(dataroot, 'dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz')
-# 		dataset = datautils.Npy_Loader_Dataset(path, keys=['imgs', 'latents_values'])
-#
-# 		dataset = datautils.Format_Dataset(dataset, fmt)
-#
-# 		args.din = 1, 64, 64
-#
-# 		return dataset,
-#
-# 	elif args.dataset == '3dshapes':
-#
-# 		def fmt(batch):
-# 			batch['images'] = torch.from_numpy(batch['images']).permute(2, 0, 1)
-# 			return batch['images'].float().div(255), batch['labels']
-#
-# 		path = os.path.join(dataroot, '3dshapes.h5')
-# 		dataset = datautils.H5_Dataset(path, keys=['images', 'labels'])
-#
-# 		dataset = datautils.Format_Dataset(dataset, fmt)
-#
-# 		args.din = 3, 64, 64
-#
-# 		return dataset,
-#
-# 	return foundation.old.load_data(args=args)
-#
-#
-def __old_get_model(args):
-	if not hasattr(args, 'feature_match'):  # bwd compatibility
-		args.feature_match = False
-
-	if not hasattr(args, 'noisy_gan'):
-		args.noisy_gan = False
-
-	model_args = {}
-
-	if hasattr(args, 'noisy_rec') and args.noisy_rec:
-		model_args['noise_std'] = args.beta
-
-	if args.model_type in {'wpp-vae'}:
-		args.pred_std = True
-
-	enc_out = args.latent_dim
-	if args.pred_std:
-		enc_out *= 2
-
-	if args.disc_fc is None:
-		args.disc_fc = args.fc.copy()[::-1]
-	if args.enc_fc is None:
-		args.enc_fc = args.fc.copy()[::-1]
-
-	encoder = models.Conv_Encoder(args.din, latent_dim=enc_out,
-
-	                              nonlin=args.nonlin, output_nonlin=None,
-
-	                              channels=args.channels[::-1], kernels=args.kernels[::-1],
-	                              strides=args.strides, factors=args.factors[::-1],
-	                              down=args.downsampling, norm_type=args.norm_type,
-
-	                              hidden_fc=args.enc_fc)
-
-	generator = models.Conv_Decoder(args.din, latent_dim=args.latent_dim,
-
-	                                nonlin=args.nonlin, output_nonlin='sigmoid',
-
-	                                channels=args.channels, kernels=args.kernels,
-	                                ups=args.factors,
-	                                upsampling=args.upsampling, norm_type=args.norm_type,
-
-	                                hidden_fc=args.fc)
-
-	discriminator = models.Conv_Encoder(args.din, latent_dim=1,
-
-	                                    nonlin=args.nonlin, output_nonlin=None,
-
-	                                    channels=args.channels[::-1], kernels=args.kernels[::-1],
-	                                    strides=args.strides, factors=args.factors[::-1],
-	                                    down=args.downsampling, norm_type=args.norm_type,
-
-	                                    hidden_fc=args.disc_fc)
-
-	latent_disc = None
-	# if 'wpp' in args.model_type:
-	kwargs = {}
-
-	model_cls = Wasserstein_PP
-	if 'vae' in args.model_type:
-		model_cls = WPP_VAE
-	# kwargs['min_log_std'] = args.min_log_std
-
-	if 'fwae' in args.model_type:
-		model_cls = Factor_WAE
-
-		if args.latent_disc_fc is not None:
-			latent_disc = models.make_MLP(args.latent_dim, 1, hidden_dims=args.latent_disc_fc,
-			                              nonlin=args.nonlin)
-			print('Using discriminator in the latent space:')
-			print(latent_disc)
-
-		kwargs.update({
-			'latent_disc': latent_disc,
-			'reg_prior': args.prior_wt,
-		})
-		print('Prior wt: {}'.format(args.prior_wt))
-
-	if 'dropin' in args.model_type:
-		model_cls = Dropin_WPP
-		kwargs['prob'] = args.prob
-		kwargs['prob_max'] = args.prob_max
-		print('Prob resampling: {}'.format(args.prob))
-
-	if args.model_type == 'fwae-dropin':
-		model_cls = Dropin_FWAE
-
-	# encoder.set_optim(optim_type=args.optim_type, lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
-	# generator.set_optim(optim_type=args.optim_type, lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
-	# discriminator.set_optim(optim_type=args.optim_type, lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
-
-	criterion = util.get_loss_type(args.criterion, reduction='sum')
-	if args.feature_match and args.gan_wt < 1:
-		# layers = [conv.conv for conv in discriminator.conv] \
-		#          + [fc for fc in discriminator.fc if isinstance(fc, nn.Linear)][:-1]
-
-		layers = discriminator.conv
-
-		criterion = models.Feature_Match(layers,
-		                                 criterion=util.get_loss_type(args.criterion, reduction='sum'),
-		                                 model=discriminator)
-
-		print('Using feature match ({} layers)'.format(len(layers)))
-	print(criterion)
-
-	gen_types = {'rec'}
-	if not args.fake_rec:
-		gen_types.remove('rec')
-	if args.fake_gen:
-		gen_types.add('gen')
-	if args.fake_hyb:
-		gen_types.add('hybrid')
-
-	if args.gan_wt == 1:
-		print('Only GAN')
-		args.viz_criterion_args = None
-		gen_types = {'gen'}
-	if args.gan_wt == 0:
-		print('Only VAE')
-	print('Using gan-wt: {}'.format(args.gan_wt))
-	print('Using gen_types: {}'.format(gen_types))
-
-	model = model_cls(encoder, generator, discriminator,
-	                  gan_wt=args.gan_wt, force_disc=args.feature_match, disc_steps=args.disc_steps,
-	                  enc_gan=args.enc_gan,
-	                  criterion=criterion, latent_reg_wt=args.beta, gan_reg_wt=args.disc_gp,
-	                  gen_types=gen_types, viz_force_gen=args.viz_force_gen, **kwargs
-	                  )
-
-	if args.disc_lr is None:
-		args.disc_lr = args.lr * args.disc_lr_factor
-	if args.enc_lr is None:
-		args.enc_lr = args.lr
-	if not hasattr(args, 'disc_optim_type') or args.disc_optim_type is None:
-		args.disc_optim_type = args.optim_type
-	if not hasattr(args, 'enc_optim_type') or args.enc_optim_type is None:
-		args.enc_optim_type = args.optim_type
-
-	model.set_optim(util.Complex_Optimizer(
-		gen=util.get_optimizer(args.optim_type, generator.parameters(), lr=args.lr, weight_decay=args.weight_decay,
-		                       momentum=args.momentum, beta1=args.beta1, beta2=args.beta2),
-	))
-
-	if model.enc is not None:
-		model.optim.enc = util.get_optimizer(args.enc_optim_type, encoder.parameters(), lr=args.enc_lr,
-		                                     weight_decay=args.weight_decay,
-		                                     momentum=args.momentum, beta1=args.beta1, beta2=args.beta2)
-
-	if model.disc is not None:
-		model.optim.disc = util.get_optimizer(args.disc_optim_type, discriminator.parameters(), lr=args.disc_lr,
-		                                      weight_decay=args.weight_decay,
-		                                      momentum=args.momentum, beta1=args.beta1, beta2=args.beta2)
-
-	if latent_disc is not None:
-		model.optim.latent_disc = util.get_optimizer(args.optim_type, latent_disc.parameters(), lr=args.lr,
-		                                             weight_decay=args.weight_decay,
-		                                             momentum=args.momentum, beta1=args.beta1, beta2=args.beta2)
-
-	return model
-
-
 

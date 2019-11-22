@@ -3,9 +3,12 @@ parents: ['dspr']
 name: 'test-pycharm'
 
 model:
-  _type: factor
+  _type: factor-dropin
 
-  gan_wt: 0
+
+  gen_types: ['hybrid']
+
+  gan_wt: .01
 
 #dataset.kwargs.download = true
 
