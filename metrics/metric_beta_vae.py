@@ -20,7 +20,6 @@ Variational Framework" (https://openreview.net/forum?id=Sy2fzU9gl).
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from absl import logging
 import numpy as np
 from six.moves import range
 from sklearn import linear_model
@@ -46,26 +45,21 @@ def compute_beta_vae_sklearn(ground_truth_data,
       train_accuracy: Accuracy on training set.
       eval_accuracy: Accuracy on evaluation set.
   """
-  logging.info("Generating training set.")
   train_points, train_labels = _generate_training_batch(
       ground_truth_data, representation_function, batch_size, num_train,
       random_state)
 
-  logging.info("Training sklearn model.")
   model = linear_model.LogisticRegression(random_state=random_state)
   model.fit(train_points, train_labels)
 
-  logging.info("Evaluate training set accuracy.")
   train_accuracy = model.score(train_points, train_labels)
   train_accuracy = np.mean(model.predict(train_points) == train_labels)
   logging.info("Training set accuracy: %.2g", train_accuracy)
 
-  logging.info("Generating evaluation set.")
   eval_points, eval_labels = _generate_training_batch(
       ground_truth_data, representation_function, batch_size, num_eval,
       random_state)
 
-  logging.info("Evaluate evaluation set accuracy.")
   eval_accuracy = model.score(eval_points, eval_labels)
   logging.info("Evaluation set accuracy: %.2g", eval_accuracy)
   scores_dict = {}
