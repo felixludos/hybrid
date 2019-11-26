@@ -18,13 +18,9 @@ from foundation import train
 
 MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
-train.register_config('dspr', os.path.join(MY_PATH, 'config', 'dspr.yaml'))
-train.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
-train.register_config('pycharm', os.path.join(MY_PATH, 'config', 'pycharm.yaml'))
+train.register_config_dir(os.path.join(MY_PATH, 'config'))
 
-train.register_config('factor', os.path.join(MY_PATH, 'config', 'factor.yaml'))
-train.register_config('dropin', os.path.join(MY_PATH, 'config', 'dropin.yaml'))
-train.register_config('dropin_factor', os.path.join(MY_PATH, 'config', 'dropin_factor.yaml'))
+train.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
 
 class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Trainable_Model):
 
@@ -270,9 +266,6 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 	def hybridize(self, q):
 		p = self.sample_prior(q.size(0))
 
-		if q is None:
-			return p
-
 		eta = torch.rand_like(q)
 		mix = eta*p + (1-eta)*q
 
@@ -302,35 +295,21 @@ class WPP_VAE(Wasserstein_PP):
 	def __init__(self, A):
 		min_log_std = A.pull('min_log_std', -3)
 
-		raise NotImplementedError('Gaussian_Encoder is missing')
-
 		super().__init__(A)
+
+		assert self.enc is None or isinstance(self.enc, models.Normal_Conv_Encoder)
 
 		self.min_log_std = min_log_std
 
-	def decode(self, q=None, N=None):
+	def decode(self, q):
 		if isinstance(q, distrib.Distribution):
 			q = q.rsample()
-		return super().decode(q, N)
+		return super().decode(q)
 
-	def encode(self, x):
-		if self.enc is None:
-			return None
-
-		q = self.enc(x)
-
-		mu = q.narrow(-1, 0, self.latent_dim)
-		logsigma = q.narrow(-1, self.latent_dim, self.latent_dim)
-		if self.min_log_std is not None:
-			logsigma = logsigma.clamp(min=self.min_log_std)
-		sigma = logsigma.exp()
-
-		return distrib.Normal(loc=mu, scale=sigma)
-
-	def hybridize(self, q=None, N=None):
-		if q is None:
-			return self.sample_prior(N)
-		return q
+	def hybridize(self, q):
+		if isinstance(q, distrib.Distribution):
+			q = q.rsample()
+		return super().hybridize(q)
 
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
@@ -339,8 +318,25 @@ train.register_model('wpp-vae', WPP_VAE)
 
 class WPP_RAMMC(WPP_VAE):
 
+	def __init__(self, A):
+
+		n_samples = A.pull('rammc_samples')
+
+		super().__init__(A)
+
+		self.n_samples = n_samples
+
 	def regularize(self, q):
-		pass
+
+		mu, sigma = q.loc, q.scale
+
+		B = mu.size(0)
+
+		# mu, sigma =
+
+
+
+		raise NotImplementedError
 
 class Dropin_WPP(Wasserstein_PP):
 	def __init__(self, A):
@@ -369,7 +365,6 @@ class Dropin_WPP(Wasserstein_PP):
 train.register_model('dropin', Dropin_WPP)
 
 class Dropout_WPP(Dropin_WPP):
-
 	def hybridize(self, q):
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q * sel
@@ -437,6 +432,10 @@ class Factor_WPP(Wasserstein_PP):
 			
 		return reg
 train.register_model('factor', Factor_WPP)
+
+class FactorVAE(Factor_WPP, WPP_VAE):
+	pass
+train.register_model('fvae', FactorVAE)
 
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass

@@ -1,0 +1,13 @@
+parents: ['dspr', 'basics']
+
+
+model:
+    _type: 'wpp-vae'
+
+    gan_wt: 0
+
+    latent_reg_wt: 1
+
+    encoder:
+        _type: 'normal-conv'
+

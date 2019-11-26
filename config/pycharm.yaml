@@ -1,21 +1,25 @@
-parents: ['dspr']
+parents: ['vae', 'dspr']
 
 name: 'test-pycharm'
 
 inline: True
 
-output:
-  unique_tests: True
+#output:
+#  unique_tests: True
 
 model:
 #  _type: wpp
 
+  latent_reg_wt: 100
 
-#  gen_types: ['hybrid']
+
+
+
+#  gen_types: ['gen']
 
 #  rec_noise: 0.2
 
-  gan_wt: 1
+#  gan_wt: 1
 
 #  gen_types: ['gen']
 
