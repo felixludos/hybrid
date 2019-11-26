@@ -1,0 +1,10 @@
+parents: ['dspr']
+
+
+model:
+    _type: 'factor'
+
+    gan_wt: 0
+
+    reg_prior: 0.5
+

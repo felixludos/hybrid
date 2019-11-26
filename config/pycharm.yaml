@@ -2,13 +2,22 @@ parents: ['dspr']
 
 name: 'test-pycharm'
 
+inline: True
+
+output:
+  unique_tests: True
+
 model:
-  _type: factor-dropin
+#  _type: wpp
 
 
-  gen_types: ['hybrid']
+#  gen_types: ['hybrid']
 
-  gan_wt: .01
+#  rec_noise: 0.2
+
+  gan_wt: 1
+
+#  gen_types: ['gen']
 
 #dataset.kwargs.download = true
 

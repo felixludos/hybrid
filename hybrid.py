@@ -22,6 +22,10 @@ train.register_config('dspr', os.path.join(MY_PATH, 'config', 'dspr.yaml'))
 train.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
 train.register_config('pycharm', os.path.join(MY_PATH, 'config', 'pycharm.yaml'))
 
+train.register_config('factor', os.path.join(MY_PATH, 'config', 'factor.yaml'))
+train.register_config('dropin', os.path.join(MY_PATH, 'config', 'dropin.yaml'))
+train.register_config('dropin_factor', os.path.join(MY_PATH, 'config', 'dropin_factor.yaml'))
+
 class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Trainable_Model):
 
 	def __init__(self, A):
@@ -41,6 +45,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		gen_types = A.pull('gen_types', {'rec'})
 		viz_force_gen = A.pull('viz_force_gen', False)
 
+		rec_noise = A.pull('rec_noise', None)
 
 		super().__init__(encoder.din, generator.din)
 		self.step_counter = 0
@@ -64,8 +69,9 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		elif gan_wt == 1:
 			self.enc = None
 
+		gen_types = set(gen_types)
 		assert gan_wt == 0 or (len(gen_types) and len(gen_types - {'rec', 'hybrid', 'gen'})==0), 'invalid: {}'.format(gen_types)
-		self.gen_types = set(gen_types)
+		self.gen_types = gen_types
 
 		self.disc_steps = disc_steps if self.disc is not None else 0
 		self.enc_gan = enc_gan and self.enc is not None
@@ -76,10 +82,12 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.viz_force_gen = viz_force_gen
 		self._rec, self._real = None, None
 
+		self.rec_noise = rec_noise
+
 		self.set_optim()
 
 	def _visualize(self, info, logger):
-		if self._viz_counter % 5 == 0:
+		if self._viz_counter % 2 == 0:
 			if 'latent' in info and info.latent is not None:
 				q = info.latent.loc if isinstance(info.latent, distrib.Distribution) else info.latent
 
@@ -112,7 +120,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			if 'gen' not in info and self.viz_force_gen:
 				with torch.no_grad():
 					info.gen = self.generate(N*2)
-			elif 'gen' in info:
+			if 'gen' in info:
 				viz_gen = info.gen[:2*N]
 				logger.add('images', 'gen', viz_gen)
 
@@ -133,7 +141,11 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			q = self.encode(x)
 			out.latent = q
 
-			rec = self.decode(q)
+			qrec = q
+			if self.rec_noise is not None:
+				qrec += torch.randn_like(q)*self.rec_noise
+
+			rec = self.decode(qrec)
 			out.reconstruction = rec
 
 		# train discriminator
@@ -168,7 +180,8 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			wasserstein = verdict_real.mean() - verdict_fake.mean()
 			self.stats.update('wasserstein', wasserstein.detach())
 
-			out.loss = wasserstein
+			if self.gan_wt == 1:
+				out.loss = wasserstein
 			disc_loss = -wasserstein
 
 			if 'gan' in self.reg_wts:
@@ -285,7 +298,6 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		return self.decode(q)
 train.register_model('wpp', Wasserstein_PP)
 
-
 class WPP_VAE(Wasserstein_PP):
 	def __init__(self, A):
 		min_log_std = A.pull('min_log_std', -3)
@@ -323,6 +335,12 @@ class WPP_VAE(Wasserstein_PP):
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
 train.register_model('wpp-vae', WPP_VAE)
+
+
+class WPP_RAMMC(WPP_VAE):
+
+	def regularize(self, q):
+		pass
 
 class Dropin_WPP(Wasserstein_PP):
 	def __init__(self, A):

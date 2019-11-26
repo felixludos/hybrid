@@ -1,0 +1,6 @@
+parents: ['dspr', 'factor', 'dropin']
+
+
+model:
+    _type: 'factor-dropin'
+

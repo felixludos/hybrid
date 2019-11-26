@@ -2,10 +2,12 @@ parents: ['hybrid']
 
 name: 'test-dspr'
 
+
+
 dataset:
     name: 'dsprites'
 
     batch_size: 128
 
-#    val_split: 0.1
+    val_split: 0.1
 

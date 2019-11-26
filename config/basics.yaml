@@ -7,7 +7,7 @@ num_workers: 0
 output:
     save_freq: 1
 
-
+    print_freq: 100
 #dataset:
 
 
@@ -16,12 +16,14 @@ training:
 
     epochs: 40
 
-    print_freq: 50
+    no_test: True
 
 model:
     _type: 'wpp'
 
     nonlin: 'prelu'
+
+    viz_force_gen: True
 
     fc: [256, 128, 128]
 
@@ -38,9 +40,9 @@ model:
         name: 'bce'
         reduction: 'sum'
 
-    beta: 100
+    latent_reg_wt: 100
+    gan_reg_wt: 10
 
-    disc_gp: 10
     disc_steps: 4
 
     gan_wt: 1.e-4
@@ -59,7 +61,12 @@ model:
         fc: [128, 64, 16]
 
         optim:
-            lr: 1.2e-3
+            lr: 1.e-4
+            type: 'adam'
+            weight_decay: 0
+            momentum: 0
+            beta1: 0.5
+            beta2: 0.9
 
     encoder:
         _type: 'conv'
@@ -67,7 +74,7 @@ model:
 
 optim:
     type: 'adam'
-    lr: 4.e-4
+    lr: 1.e-4
     weight_decay: 0
     momentum: 0
     beta1: 0.5

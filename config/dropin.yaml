@@ -1,0 +1,10 @@
+parents: ['dspr']
+
+
+model:
+    _type: 'dropin'
+
+    gen_types: ['hybrid']
+
+    prob: 1
+
