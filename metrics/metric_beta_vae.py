@@ -54,14 +54,12 @@ def compute_beta_vae_sklearn(ground_truth_data,
 
   train_accuracy = model.score(train_points, train_labels)
   train_accuracy = np.mean(model.predict(train_points) == train_labels)
-  logging.info("Training set accuracy: %.2g", train_accuracy)
 
   eval_points, eval_labels = _generate_training_batch(
       ground_truth_data, representation_function, batch_size, num_eval,
       random_state)
 
   eval_accuracy = model.score(eval_points, eval_labels)
-  logging.info("Evaluation set accuracy: %.2g", eval_accuracy)
   scores_dict = {}
   scores_dict["train_accuracy"] = train_accuracy
   scores_dict["eval_accuracy"] = eval_accuracy

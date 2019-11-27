@@ -1,5 +1,6 @@
 local_data/
 .ipynb_checkpoints/
+.ipynb_checkpoints
 .idea/
 __pycache__/
 __pycache__
@@ -8,3 +9,4 @@ old_trained_nets/
 foundation.egg-info/
 .DS_Store
 saved_models/
+data/
