@@ -1,4 +1,4 @@
-parents: ['vae', 'dspr']
+parents: ['factor', 'dspr']
 
 name: 'test-pycharm'
 
@@ -7,11 +7,13 @@ inline: True
 #output:
 #  unique_tests: True
 
-model:
+#model:
 #  _type: wpp
 
-  latent_reg_wt: 100
+#  latent_reg_wt: 100
 
+optim:
+  lr: 2.e-4
 
 
 
