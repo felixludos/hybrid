@@ -49,7 +49,8 @@ class representation_func(object):
 		x = np.transpose(x, (0,3,2,1))
 		"""Computes representation vector for input images."""
 		output = self.model.encode(torch.Tensor(x))
-		output = output.narrow(-1, 0, int(self.latent_dim))
+		if isinstance(self.enc, models.Normal_Conv_Encoder):
+			output = output.loc
 		return output.detach().numpy()
 
 def eval_all(model = None, args = None, dataset = None, representation_function = None, seed = 10, save_path = None):
