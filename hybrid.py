@@ -43,6 +43,9 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 		rec_noise = A.pull('rec_noise', None)
 
+		if gan_wt == 1:
+			gen_types = {'gen'}
+
 		super().__init__(encoder.din, generator.din)
 		self.step_counter = 0
 
@@ -452,7 +455,9 @@ def get_name(A):
 	assert 'name' in A, 'Must provide a name manually'
 	return A.name
 
+def main(argv=None):
+	return train.main(argv=argv, get_data=get_data, get_model=get_model, get_name=get_name)
 
 if __name__ == '__main__':
-	sys.exit(train.main(get_data=get_data, get_model=get_model, get_name=get_name))
+	sys.exit(main(sys.argv))
 
