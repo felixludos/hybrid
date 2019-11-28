@@ -1,0 +1,10 @@
+parents: ['dspr', 'factor', 'vae']
+
+
+model:
+    _type: 'fvae'
+
+#optim:
+#  lr: 2.e-4
+#  beta1: 0.9
+#  beta2: 0.999

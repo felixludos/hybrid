@@ -1,4 +1,4 @@
-parents: ['dspr', 'basics', 'factor', 'dropin']
+parents: ['dspr', 'dropin', 'factor']
 
 
 model:

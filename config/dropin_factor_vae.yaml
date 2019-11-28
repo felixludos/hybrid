@@ -1,0 +1,6 @@
+parents: ['dspr', 'dropin_vae', 'fvae' ]
+
+
+model:
+    _type: 'dropin-fvae'
+

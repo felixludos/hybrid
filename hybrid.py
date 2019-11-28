@@ -436,9 +436,17 @@ class Factor_WPP(Wasserstein_PP):
 		return reg
 train.register_model('factor', Factor_WPP)
 
-class FactorVAE(Factor_WPP, WPP_VAE):
+class FactorVAE(WPP_VAE, Factor_WPP):
 	pass
 train.register_model('fvae', FactorVAE)
+
+class DropinVAE(WPP_VAE, Dropin_WPP):
+	pass
+train.register_model('dropin-vae', DropinVAE)
+
+class Dropin_FVAE(FactorVAE, Dropin_WPP):
+	pass
+train.register_model('dropin-fvae', Dropin_FVAE)
 
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
