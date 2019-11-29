@@ -1,4 +1,4 @@
-parents: ['basics', 'dspr']
+parents: ['fvae', 'dspr']
 
 name: 'test-pycharm'
 
@@ -7,13 +7,13 @@ inline: True
 #output:
 #  unique_tests: True
 
-training:
-  max_iter: 101
+#training:
+#  max_iter: 101
 
-model:
+#model:
 #  _type: wpp
 
-  gan_wt: 1
+#  gan_wt: 1
 
 #  latent_reg_wt: 100
 

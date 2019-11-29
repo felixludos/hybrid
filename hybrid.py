@@ -396,6 +396,10 @@ class Factor_WPP(Wasserstein_PP):
 			self.stats.new('reg-prior', 'reg-factor')
 	
 	def regularize(self, q):
+
+		qdis = q
+		if isinstance(q, distrib.Distribution):
+			q = q.loc
 		
 		mix = util.shuffle_dim(q)
 		
@@ -428,7 +432,7 @@ class Factor_WPP(Wasserstein_PP):
 				reg = 0.
 		
 		if self.prior_wt is not None and self.prior_wt > 0:
-			reg_prior = super().regularize(q)
+			reg_prior = super().regularize(qdis)
 			self.stats.update('reg-prior', reg_prior)
 			self.stats.update('reg-factor', reg)
 			reg = (1-self.prior_wt)*reg + self.prior_wt*reg_prior
@@ -436,7 +440,7 @@ class Factor_WPP(Wasserstein_PP):
 		return reg
 train.register_model('factor', Factor_WPP)
 
-class FactorVAE(WPP_VAE, Factor_WPP):
+class FactorVAE(Factor_WPP, WPP_VAE):
 	pass
 train.register_model('fvae', FactorVAE)
 
