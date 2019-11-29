@@ -1,4 +1,4 @@
-parents: ['fvae', 'dspr']
+parents: ['fvae', '3dshapes']
 
 name: 'test-pycharm'
 

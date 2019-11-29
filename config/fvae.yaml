@@ -1,4 +1,4 @@
-parents: ['dspr', 'factor', 'vae']
+parents: ['factor', 'vae']
 
 
 model:

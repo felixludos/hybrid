@@ -1,0 +1,13 @@
+parents: ['basics']
+
+name: 'test-3dshapes'
+
+
+
+dataset:
+    name: '3dshapes'
+
+    batch_size: 128
+
+    val_split: 0.1
+

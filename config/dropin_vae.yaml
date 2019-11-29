@@ -1,4 +1,4 @@
-parents: ['dspr', 'vae', 'dropin']
+parents: ['vae', 'dropin']
 
 
 model:
