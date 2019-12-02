@@ -2,7 +2,8 @@ parents: ['basics']
 
 name: 'test-3dshapes'
 
-
+training:
+    epochs: 100
 
 dataset:
     name: '3dshapes'
