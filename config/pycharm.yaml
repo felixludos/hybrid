@@ -1,8 +1,11 @@
-parents: ['fvae', '3dshapes']
+parents: ['new', '3dshapes']
 
 name: 'test-pycharm'
 
 inline: True
+
+#dataset:
+#  device: cpu
 
 #output:
 #  unique_tests: True
@@ -10,10 +13,10 @@ inline: True
 #training:
 #  max_iter: 100
 
-#model:
+model:
 #  _type: wpp
 
-#  gan_wt: 1
+  gan_wt: 1
 
 #  latent_reg_wt: 100
 
