@@ -3,13 +3,16 @@ import argparse
 import numpy as np
 
 from foundation import train
+from foundation import models
 from hybrid import get_model
 
 import torch
+import torch.nn as nn
 
 from metrics import mig
 from metrics import metric_factor_vae
 from metrics import metric_beta_vae
+from metrics import modularity_explicitness
 from metrics import dci, irs, sap
 from metrics import unsupervised_metrics
 from ground_truth import dsprites
@@ -46,7 +49,7 @@ def _assert_args_and_load(model, args, dataset, representation_function):
 	if isinstance(model, str) and representation_function is None:
 		args, model = _load_model_eval(model, args)
 		model.eval()
-		representation_function = representation_func(model)
+		representation_function = representation_func(model, args['device'])
 	if dataset is None:
 		dataset = dsprites.DSprites()
 	return representation_function, dataset
@@ -54,15 +57,16 @@ def _assert_args_and_load(model, args, dataset, representation_function):
 
 
 class representation_func(object):
-	def __init__(self, model):
+	def __init__(self, model, device):
 		self.model = model.enc
+		self.device = device
 	def __call__(self, x):
 		x = np.transpose(x, (0,3,2,1))
 		"""Computes representation vector for input images."""
-		output = self.model(torch.Tensor(x))
+		output = self.model(torch.Tensor(x).to(self.device))
 		if isinstance(self.model, models.Normal_Conv_Encoder):
 			output = output.loc
-		return output.detach().numpy()
+		return output.detach().cpu().numpy()
 
 def eval_all(model = None, args = None, dataset = None, representation_function = None, seed = 10, save_path = None):
 	representation_function, dataset = _assert_args_and_load(model, args, dataset, representation_function)
@@ -111,7 +115,7 @@ def eval_sap(model = None, args = None, dataset = None, representation_function 
 def eval_modularity_explicitness(model = None, args = None, dataset = None, representation_function = None, seed = 10):
 	representation_function, dataset = _assert_args_and_load(model, args, dataset, representation_function)
 	np.random.seed(seed) 
-	return modularity_explicitness.compute_modularity_explicitness(dataset, _representation_function, np.random, 10000, 5000, 64)
+	return modularity_explicitness.compute_modularity_explicitness(dataset, representation_function, np.random, 10000, 5000, 64)
 
 def eval_unsupervised(model = None, args = None, dataset = None, representation_function = None, seed = 10):
 	representation_function, dataset = _assert_args_and_load(model, args, dataset, representation_function)
