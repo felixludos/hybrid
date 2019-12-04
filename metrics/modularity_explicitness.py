@@ -52,7 +52,6 @@ def compute_modularity_explicitness(ground_truth_data,
   mus_train, ys_train = utils.generate_batch_factor_code(
       ground_truth_data, representation_function, num_train,
       random_state, batch_size)
-  print(ys_train.shape)
   mus_test, ys_test = utils.generate_batch_factor_code(
       ground_truth_data, representation_function, num_test,
       random_state, batch_size)
