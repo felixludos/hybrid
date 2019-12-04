@@ -1,0 +1,8 @@
+parents: ['basics']
+
+model:
+    scheduler_type: 'plateau'
+    scheduler_decay: .5
+    scheduler_patience: 4
+    scheduler_cooldown: 2
+

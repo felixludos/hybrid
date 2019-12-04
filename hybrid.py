@@ -22,7 +22,7 @@ train.register_config_dir(os.path.join(MY_PATH, 'config'))
 
 train.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
 
-class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Trainable_Model):
+class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Schedulable, fd.Trainable_Model):
 
 	def __init__(self, A):
 
@@ -43,11 +43,14 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 		rec_noise = A.pull('rec_noise', None)
 
+		gan_warm_start = A.pull('gan_warm_start', None)
+
 		if gan_wt == 1:
 			gen_types = {'gen'}
 
 		super().__init__(encoder.din, generator.din)
 		self.step_counter = 0
+		self.epoch_counter = 0
 
 		self.enc = encoder
 		self.gen = generator
@@ -81,9 +84,12 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.viz_force_gen = viz_force_gen
 		self._rec, self._real = None, None
 
+		self.gan_warm_start = gan_warm_start
+		assert self.gan_warm_start is None or 0 < self.gan_wt < 1, 'invalid gan wt: {}'.format(self.gan_wt)
 		self.rec_noise = rec_noise
 
 		self.set_optim()
+		self.set_scheduler(A)
 
 	def _visualize(self, info, logger):
 		if self._viz_counter % 2 == 0:
@@ -125,6 +131,9 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 			logger.flush()
 
+	def pre_epoch(self):
+		super().pre_epoch()
+		self.epoch_counter += 1
 
 	def _step(self, batch, out=None):
 		self.step_counter += 1
@@ -227,7 +236,9 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 					if self.enc_gan:
 						self.optim.enc.zero_grad()
 
-					verdict.mul(-self.gan_wt).backward(retain_graph=True)
+					if self.gan_warm_start is None or self.epoch_counter > self.gan_warm_start:
+
+						verdict.mul(-self.gan_wt).backward(retain_graph=True)
 
 					if self.gan_wt == 1:
 						self.optim.gen.step()

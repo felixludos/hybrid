@@ -8,30 +8,33 @@ output:
     save_freq: 1
 
     print_freq: 100
-#dataset:
 
 
 training:
     start: 0
 
-    epochs: 40
+    epochs: 60
 
     no_test: True
 
 model:
     _type: 'wpp'
 
+    scheduler_type: 'step'
+    scheduler_step: 30
+    scheduler_decay: .2
+
     nonlin: 'prelu'
 
     viz_force_gen: True
 
-    fc: [256, 128, 128]
+    fc: [256, 128]
 
-    channels: [8, 16, 32, 64, 128]
+    channels: [32, 32, 64, 64, 128]
     kernels: 3
-    factors: 2
+    factors: 1
+    strides: 2
 
-    upsampling: 'bilinear'
     downsampling: 'max'
 
     latent_dim: 16
@@ -43,41 +46,43 @@ model:
     latent_reg_wt: 100
     gan_reg_wt: 10
 
-    disc_steps: 4
+    disc_steps: 1
 
     gan_wt: 1.e-4
 
     generator:
         _type: 'deconv'
-        fc: [128, 128, 256]
+        fc: [128, 128, 128, 256]
 
-        channels: [128, 64, 32, 16, 8]
+        channels: [128, 64, 64, 32, 32]
+        factors: 2
+        strides: 1
+
+        upsampling: 'bilinear'
 
         output_nonlin: sigmoid
 
     discriminator:
         _type: 'conv'
 
-        fc: [128, 64, 16]
+        fc: [256, 128, 64]
+        latent_dim: 1
 
-#        optim:
-#            lr: 1.e-4
-#            type: 'adam'
-#            weight_decay: 0
-#            momentum: 0
-#            beta1: 0.5
-#            beta2: 0.9
+        lr: 5.e-3
+        beta1: 0.5
+        beta2: 0.9
 
     encoder:
         _type: 'conv'
 
 
-optim:
-    type: 'adam'
-    lr: 1.e-4
+    optim_type: 'adam'
+    lr: 1.e-3
     weight_decay: 0
     momentum: 0
-    beta1: 0.5
-    beta2: 0.9
+    beta1: 0.9
+    beta2: 0.999
+
+
 
 

@@ -1,4 +1,4 @@
-parents: ['new', '3dshapes']
+parents: ['vae', '3dshapes']
 
 name: 'test-pycharm'
 
@@ -16,12 +16,22 @@ inline: True
 model:
 #  _type: wpp
 
-  gan_wt: 1
+#  gan_wt: 0
+
+#  gan_warm_start: 3
 
 #  latent_reg_wt: 100
 
-#optim:
-#  lr: 2.e-4
+  scheduler_type: 'plateau'
+  scheduler_decay: .5
+  scheduler_patience: 4
+  scheduler_cooldown: 2
+#  scheduler_step: 10
+
+  lr: 1.e-3
+
+#  norm_type: None
+
 
 
 

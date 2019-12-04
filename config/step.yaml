@@ -1,0 +1,7 @@
+parents: ['basics']
+
+model:
+    scheduler_type: 'step'
+    scheduler_step: 30
+    scheduler_decay: .2
+
