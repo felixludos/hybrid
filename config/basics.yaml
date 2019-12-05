@@ -21,7 +21,7 @@ model:
     _type: 'wpp'
 
     scheduler_type: 'step'
-    scheduler_step: 30
+    scheduler_step: 40
     scheduler_decay: .2
     scheduler_min_lr: 1.e-6
 
