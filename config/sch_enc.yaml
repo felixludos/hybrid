@@ -1,0 +1,9 @@
+parents: ['basics']
+
+
+model:
+
+  scheduler_type: '_x_'
+
+  encoder:
+    scheduler_type: 'plateau'

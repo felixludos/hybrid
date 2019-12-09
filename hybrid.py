@@ -90,7 +90,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.rec_noise = rec_noise
 
 		self.set_optim()
-		self.set_scheduler(A)
+		self.set_scheduler()
 
 	def _img_size_limiter(self, imgs):
 		H, W = imgs.shape[-2:]

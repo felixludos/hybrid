@@ -1,4 +1,4 @@
-parents: ['large', 'celeba']
+parents: ['basics', '3dshapes']
 
 name: 'test-pycharm'
 
@@ -22,11 +22,13 @@ model:
 
 #  latent_reg_wt: 100
 
-#  scheduler_type: 'plateau'
+  scheduler_type: '_x_'
 #  scheduler_decay: .5
 #  scheduler_patience: 4
 #  scheduler_cooldown: 2
 #  scheduler_step: 10
+  encoder:
+    scheduler_type: 'plateau'
 
 
 #  latent_reg_wt: 2
