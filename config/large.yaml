@@ -1,0 +1,21 @@
+parents: ['basics']
+
+name: 'test-large'
+
+model:
+
+    channels: [64, 64, 64, 128, 128, 128, 256]
+    fc: [256, 128, 128]
+
+    generator:
+        fc: [128, 128, 128, 128, 256]
+
+        channels: [256, 128, 128, 128, 64, 64, 64]
+        factors: 2
+        strides: 1
+
+    discriminator:
+
+        fc: [256, 128, 128, 64]
+
+    latent_dim: 32

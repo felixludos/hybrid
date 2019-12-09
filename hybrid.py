@@ -3,6 +3,7 @@ import sys, os
 #os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 import torch
+from torch.nn import functional as F
 import torch.distributions as distrib
 
 #%matplotlib tk
@@ -91,6 +92,16 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.set_optim()
 		self.set_scheduler(A)
 
+	def _img_size_limiter(self, imgs):
+		H, W = imgs.shape[-2:]
+
+		if H*W < 2e4: # upto around 128x128
+			return imgs
+
+		imgs = F.interpolate(imgs, size=(128,128))
+		return imgs
+
+
 	def _visualize(self, info, logger):
 		if self._viz_counter % 2 == 0:
 			if 'latent' in info and info.latent is not None:
@@ -106,28 +117,28 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 				viz_x, viz_rec = info.original[:N], info.reconstruction[:N]
 
 				recs = torch.cat([viz_x, viz_rec], 0)
-				logger.add('images', 'rec', recs)
+				logger.add('images', 'rec', self._img_size_limiter(recs))
 			elif self._rec is not None:
 				viz_x, viz_rec = self._real[:N], self._rec[:N]
 
 				recs = torch.cat([viz_x, viz_rec], 0)
-				logger.add('images', 'rec', recs)
+				logger.add('images', 'rec', self._img_size_limiter(recs))
 
 			if 'hygen' in info:
-				logger.add('images', 'hygen', info.hygen[:N*2])
+				logger.add('images', 'hygen', self._img_size_limiter(info.hygen[:N*2]))
 			# elif 'fake' in info:
 			# 	logger.add('images', 'hygen', info.fake[-N*2:])
 
 
 			if 'fake' in info:
-				logger.add('images', 'fake-img', info.fake[-N*2:])
+				logger.add('images', 'fake-img', self._img_size_limiter(info.fake[-N*2:]))
 
 			if 'gen' not in info and self.viz_force_gen:
 				with torch.no_grad():
 					info.gen = self.generate(N*2)
 			if 'gen' in info:
 				viz_gen = info.gen[:2*N]
-				logger.add('images', 'gen', viz_gen)
+				logger.add('images', 'gen', self._img_size_limiter(viz_gen))
 
 			logger.flush()
 

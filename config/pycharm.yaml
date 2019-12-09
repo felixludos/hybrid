@@ -1,4 +1,4 @@
-parents: ['vae', '3dshapes']
+parents: ['large', 'celeba']
 
 name: 'test-pycharm'
 
@@ -16,7 +16,7 @@ inline: True
 model:
 #  _type: wpp
 
-#  gan_wt: 0
+  gan_wt: 0
 
 #  gan_warm_start: 3
 
@@ -29,7 +29,7 @@ model:
 #  scheduler_step: 10
 
 
-  latent_reg_wt: 2
+#  latent_reg_wt: 2
 
 #  norm_type: None
 

@@ -1,0 +1,14 @@
+parents: ['large']
+
+name: 'test-celeba'
+
+training:
+    epochs: 100
+
+dataset:
+    name: 'celeba'
+
+    batch_size: 64
+
+    val_split: 0.1
+
