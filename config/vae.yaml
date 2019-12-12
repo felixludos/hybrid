@@ -9,7 +9,8 @@ model:
     latent_reg_wt: 1
 
     encoder:
-        _type: 'normal-conv'
+#        _type: 'normal-conv'
+        _mod: 'normal'
 
 #optim:
 #  lr: 2.e-4

@@ -317,14 +317,14 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 train.register_model('wpp', Wasserstein_PP)
 
 class WPP_VAE(Wasserstein_PP):
-	def __init__(self, A):
-		min_log_std = A.pull('min_log_std', -3)
+	# def __init__(self, A):
+		# min_log_std = A.pull('min_log_std', -3)
 
-		super().__init__(A)
+		# super().__init__(A)
 
-		assert self.enc is None or isinstance(self.enc, models.Normal_Conv_Encoder)
+		# assert self.enc is None or isinstance(self.enc, models.Normal_Conv_Encoder)
 
-		self.min_log_std = min_log_std
+		# self.min_log_std = min_log_std
 
 	def decode(self, q):
 		if isinstance(q, distrib.Distribution):
@@ -481,19 +481,21 @@ train.register_model('factor-dropin', Dropin_FWAE)
 
 class CR_Shapes3D(train.datasets.Shapes3D):
 	
-	def __init__(self, dataroot, negative=False):
+	def __init__(self, dataroot, negative=False, train=True, override=False):
 
-		super().__init__(dataroot=dataroot, labels=True, dout=(3,64,64))
+		super().__init__(dataroot=dataroot, labels=True, dout=(3,64,64), train=train)
 		self.labeled = False
 
-		hues = self.labels[:,:3]
-		sel = hues.isclose(torch.tensor(0.)).sum(-1) * hues.isclose(torch.tensor(0.5)).sum(-1)
+		if train or override: # WARNING: this only affects the training/val set
 
-		if not negative:
-			sel = torch.logical_not(sel)
+			hues = self.labels[:,:3]
+			sel = hues.isclose(torch.tensor(0.)).sum(-1) * hues.isclose(torch.tensor(0.5)).sum(-1)
 
-		self.images = self.images[sel]
-		del self.labels
+			if not negative:
+				sel = torch.logical_not(sel)
+
+			self.images = self.images[sel]
+			del self.labels
 
 
 train.register_dataset('cr-3dshapes', CR_Shapes3D)

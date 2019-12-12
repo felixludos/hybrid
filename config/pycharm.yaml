@@ -1,11 +1,12 @@
-parents: ['double', '3dshapes']
+parents: ['vae', 'double', '3dshapes']
 
 name: 'test-pycharm'
 
 inline: True
 
-#dataset:
-#  device: cpu
+dataset:
+  device: cpu
+#  batch_size: 4
 
 #output:
 #  unique_tests: True
@@ -16,7 +17,7 @@ inline: True
 model:
 #  _type: wpp
 
-  gan_wt: 1
+#  gan_wt: 1
 
 #  gan_warm_start: 3
 

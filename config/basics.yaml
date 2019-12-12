@@ -4,6 +4,8 @@ device: cuda
 seed: 0
 num_workers: 0
 
+auto_name: True
+
 output:
     save_freq: 1
 
