@@ -1,4 +1,4 @@
-parents: ['basics', '3dshapes']
+parents: ['double', '3dshapes']
 
 name: 'test-pycharm'
 
@@ -16,7 +16,7 @@ inline: True
 model:
 #  _type: wpp
 
-  gan_wt: 0
+  gan_wt: 1
 
 #  gan_warm_start: 3
 

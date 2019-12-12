@@ -142,9 +142,9 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 			logger.flush()
 
-	def pre_epoch(self):
-		super().pre_epoch()
-		self.epoch_counter += 1
+	def pre_epoch(self, mode, epoch):
+		super().pre_epoch(mode, epoch)
+		self.epoch_counter = epoch
 
 	def _step(self, batch, out=None):
 		self.step_counter += 1
@@ -477,6 +477,26 @@ train.register_model('dropin-fvae', Dropin_FVAE)
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
 train.register_model('factor-dropin', Dropin_FWAE)
+
+
+class CR_Shapes3D(train.datasets.Shapes3D):
+	
+	def __init__(self, dataroot, negative=False):
+
+		super().__init__(dataroot=dataroot, labels=True, dout=(3,64,64))
+		self.labeled = False
+
+		hues = self.labels[:,:3]
+		sel = hues.isclose(torch.tensor(0.)).sum(-1) * hues.isclose(torch.tensor(0.5)).sum(-1)
+
+		if not negative:
+			sel = torch.logical_not(sel)
+
+		self.images = self.images[sel]
+		del self.labels
+
+
+train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
 
 def get_data(A, mode='train'):
