@@ -19,6 +19,8 @@ training:
 
     no_test: True
 
+name: 'wpp'
+
 model:
     _type: 'wpp'
 

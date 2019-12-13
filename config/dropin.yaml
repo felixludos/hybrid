@@ -1,5 +1,6 @@
 parents: ['basics']
 
+name: 'dwae'
 
 model:
     _type: 'dropin'

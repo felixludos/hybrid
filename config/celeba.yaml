@@ -1,6 +1,6 @@
 parents: ['large']
 
-name: 'test-celeba'
+#name: 'test-celeba'
 
 training:
     epochs: 100

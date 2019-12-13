@@ -1,0 +1,6 @@
+parents: ['basics']
+
+#name: 'test-gan'
+
+model:
+    gan_wt: 0

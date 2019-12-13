@@ -1,4 +1,4 @@
-parents: ['vae', 'double', '3dshapes']
+parents: ['gan', 'double', '3dshapes']
 
 name: 'test-pycharm'
 
@@ -17,7 +17,7 @@ dataset:
 model:
 #  _type: wpp
 
-#  gan_wt: 1
+  gan_wt: 1
 
 #  gan_warm_start: 3
 

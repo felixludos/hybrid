@@ -1,5 +1,6 @@
 parents: ['basics']
 
+name: 'fwae'
 
 model:
     _type: 'factor'

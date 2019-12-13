@@ -1,0 +1,11 @@
+parents: ['basics']
+
+name: 'gan'
+
+dataset:
+    val_split: '_x_'
+
+model:
+    gan_wt: 1
+
+    scheduler_type: '_x_'

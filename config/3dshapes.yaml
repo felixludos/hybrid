@@ -1,6 +1,6 @@
 parents: ['basics']
 
-name: 'test-3dshapes'
+#name: 'test-3dshapes'
 
 training:
     epochs: 100

@@ -11,6 +11,8 @@ model:
 
     nonlin: 'elu'
 
+    scheduler_type: 'plateau'
+    scheduler_decay: .2
 
     encoder:
         _type: 'double-enc'
