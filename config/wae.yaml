@@ -1,6 +1,6 @@
 parents: ['basics']
 
-#name: 'test-gan'
+name: 'wae'
 
 model:
     gan_wt: 0
