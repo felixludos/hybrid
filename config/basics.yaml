@@ -19,7 +19,7 @@ training:
 
     no_test: True
 
-name: 'wpp'
+#name: 'wpp'
 
 model:
     _type: 'wpp'
@@ -28,6 +28,7 @@ model:
     scheduler_step: 40
     scheduler_decay: .2
     scheduler_min_lr: 1.e-6
+    scheduler_patience: 5
 
     nonlin: 'prelu'
 
@@ -88,6 +89,7 @@ model:
     beta1: 0.9
     beta2: 0.999
 
-
+info:
+    model_type: 'wpp'
 
 

@@ -1,9 +1,7 @@
 parents: ['basics']
 
-name: 'vae'
-
 model:
-    _type: 'wpp-vae'
+    _type: 'vpp'
 
     gan_wt: 0
 
@@ -17,3 +15,7 @@ model:
 #  lr: 2.e-4
 #  beta1: 0.9
 #  beta2: 0.999
+
+info:
+    model_type: 'vae'
+

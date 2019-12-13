@@ -1,7 +1,0 @@
-parents: ['dropin_vae', 'fvae' ]
-
-name: 'fdvae'
-
-model:
-    _type: 'dropin-fvae'
-

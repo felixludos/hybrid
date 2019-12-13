@@ -1,7 +1,0 @@
-parents: ['dropin', 'factor']
-
-name: 'fdwae'
-
-model:
-    _type: 'factor-dropin'
-

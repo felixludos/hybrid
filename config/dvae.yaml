@@ -1,0 +1,11 @@
+parents: ['dwae', 'vae']
+
+#name: 'dvae'
+
+model:
+    _type: 'dvae'
+
+info:
+    model_type: 'dvae'
+
+

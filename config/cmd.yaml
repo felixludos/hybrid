@@ -1,0 +1,7 @@
+#name: 'test-cmd'
+
+inline: True
+
+dataset:
+  device: cpu
+  batch_size: 8

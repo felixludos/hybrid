@@ -316,16 +316,15 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		return self.decode(q)
 train.register_model('wpp', Wasserstein_PP)
 
+class WGAN(Wasserstein_PP):
+	def __init__(self, A):
+		super().__init__(A)
+
+		assert self.gan_wt == 1, 'gan_wt should be 1: {}'.format(self.gan_wt)
+train.register_model('wgan', WGAN)
+
+
 class WPP_VAE(Wasserstein_PP):
-	# def __init__(self, A):
-		# min_log_std = A.pull('min_log_std', -3)
-
-		# super().__init__(A)
-
-		# assert self.enc is None or isinstance(self.enc, models.Normal_Conv_Encoder)
-
-		# self.min_log_std = min_log_std
-
 	def decode(self, q):
 		if isinstance(q, distrib.Distribution):
 			q = q.rsample()
@@ -338,7 +337,7 @@ class WPP_VAE(Wasserstein_PP):
 
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
-train.register_model('wpp-vae', WPP_VAE)
+train.register_model('vpp', WPP_VAE)
 
 
 class WPP_RAMMC(WPP_VAE):
@@ -387,13 +386,13 @@ class Dropin_WPP(Wasserstein_PP):
 		
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q*sel + hyb*(1-sel)
-train.register_model('dropin', Dropin_WPP)
+train.register_model('dwae', Dropin_WPP)
 
 class Dropout_WPP(Dropin_WPP):
 	def hybridize(self, q):
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q * sel
-train.register_model('dropout', Dropout_WPP)
+train.register_model('dout-wae', Dropout_WPP)
 
 class Factor_WPP(Wasserstein_PP):
 	def __init__(self, A):
@@ -460,23 +459,23 @@ class Factor_WPP(Wasserstein_PP):
 			reg = (1-self.prior_wt)*reg + self.prior_wt*reg_prior
 			
 		return reg
-train.register_model('factor', Factor_WPP)
+train.register_model('fwpp', Factor_WPP)
 
 class FactorVAE(Factor_WPP, WPP_VAE):
 	pass
-train.register_model('fvae', FactorVAE)
+train.register_model('fvpp', FactorVAE)
 
 class DropinVAE(WPP_VAE, Dropin_WPP):
 	pass
-train.register_model('dropin-vae', DropinVAE)
+train.register_model('dvae', DropinVAE)
 
 class Dropin_FVAE(FactorVAE, Dropin_WPP):
 	pass
-train.register_model('dropin-fvae', Dropin_FVAE)
+train.register_model('fdvae', Dropin_FVAE)
 
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
-train.register_model('factor-dropin', Dropin_FWAE)
+train.register_model('fdwae', Dropin_FWAE)
 
 
 class CR_Shapes3D(train.datasets.Shapes3D):
@@ -496,7 +495,6 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 
 			self.images = self.images[sel]
 			del self.labels
-
 
 train.register_dataset('cr-3dshapes', CR_Shapes3D)
 

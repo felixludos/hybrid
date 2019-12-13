@@ -1,0 +1,10 @@
+parents: ['dwae', 'fwae']
+
+#name: 'fdwae'
+
+model:
+    _type: 'fdwae'
+
+info:
+    model_type: 'fdwae'
+

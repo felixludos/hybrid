@@ -2,7 +2,7 @@ parents: ['basics']
 
 model:
 
-    channels: [64, 64, 64, 128, 128, 128, 128]
+    channels: [64, 64, 64, 128, 128, 128, 256]
     factors: 2
 
     down_type: 'max'
@@ -11,19 +11,21 @@ model:
 
     nonlin: 'elu'
 
+    scheduler_type: 'plateau'
+    scheduler_decay: .2
 
     encoder:
         _type: 'double-enc'
 
         tail:
             _type: 'mlp'
-            hidden_dims: [256, 128, 128]
+            hidden_dims: [256, 128]
 
 
     generator:
         _type: 'double-dec'
 
-        channels: [128, 128, 128, 128, 64, 64, 64]
+        channels: [256, 128, 128, 128, 64, 64, 64]
 
         output_nonlin: 'sigmoid'
 
@@ -38,5 +40,5 @@ model:
 
         tail:
             _type: 'mlp'
-            hidden_dims: [256, 128, 128, 64]
+            hidden_dims: [256, 128, 64]
 

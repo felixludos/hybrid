@@ -1,6 +1,0 @@
-parents: ['vae', 'dropin']
-
-name: 'dvae'
-
-model:
-    _type: 'dropin-vae'

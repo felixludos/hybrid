@@ -1,54 +1,59 @@
-parents: ['gan', 'double', '3dshapes']
 
-name: 'test-pycharm'
+parents: ['cmd', 'fdvae', 'large-double', 'celeba']
 
-inline: True
+#parents: ['vae', 'double', '3dshapes']
 
-dataset:
-  device: cpu
-#  batch_size: 4
-
-#output:
-#  unique_tests: True
-
-#training:
-#  max_iter: 100
-
-model:
-#  _type: wpp
-
-  gan_wt: 1
-
-#  gan_warm_start: 3
-
-#  latent_reg_wt: 100
-
-  scheduler_type: '_x_'
-#  scheduler_decay: .5
-#  scheduler_patience: 4
-#  scheduler_cooldown: 2
-#  scheduler_step: 10
-  encoder:
-    scheduler_type: 'plateau'
-
-
-#  latent_reg_wt: 2
-
-#  norm_type: None
-
-
-
-
-#  gen_types: ['gen']
-
-#  rec_noise: 0.2
-
-#  gan_wt: 1
-
-#  gen_types: ['gen']
-
-#dataset.kwargs.download = true
-
-#resume = 'test-pycharm_191121-154737'
 #
-#extend = 7
+#
+##name: 'test-pycharm'
+#
+#inline: True
+#
+#dataset:
+#  device: cpu
+##  batch_size: 4
+#
+##output:
+##  unique_tests: True
+#
+##training:
+##  max_iter: 100
+#
+#model:
+##  _type: wpp
+#
+##  gan_wt: 1
+#
+##  gan_warm_start: 3
+#
+##  latent_reg_wt: 100
+#
+#  scheduler_type: '_x_'
+##  scheduler_decay: .5
+##  scheduler_patience: 4
+##  scheduler_cooldown: 2
+##  scheduler_step: 10
+#  encoder:
+#    scheduler_type: 'plateau'
+#
+#
+##  latent_reg_wt: 2
+#
+##  norm_type: None
+#
+#
+#
+#
+##  gen_types: ['gen']
+#
+##  rec_noise: 0.2
+#
+##  gan_wt: 1
+#
+##  gen_types: ['gen']
+#
+##dataset.kwargs.download = true
+#
+##resume = 'test-pycharm_191121-154737'
+##
+##extend = 7
