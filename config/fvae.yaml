@@ -1,4 +1,4 @@
-parents: ['factor', 'vae']
+parents: ['fwae', 'vae']
 
 name: 'fvae'
 
