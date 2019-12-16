@@ -498,6 +498,33 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 
 train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
+class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
+
+	def __init__(self, dataroot, label_type=None, train=True, size=128):
+
+		assert size <= 128, 'original images not large enough to crop to: {}, {}'.format(size, size)
+
+		super().__init__(dataroot=dataroot, label_type=label_type, train=train, resize=False)
+
+		_, self.cy, self.cx = self.din
+		self.cy, self.cx = self.cy//2, self.cx//2
+		self.r = size//2
+
+		din = (3, size, size)
+		if self.dout == self.din:
+			self.dout = din
+		self.din = din
+
+	def __getitem__(self, item):
+		sample = super().__getitem__(item)
+
+		img, *other = sample
+		img = img[..., self.cy-self.r:self.cy+self.r, self.cx-self.r:self.cx+self.r]
+
+		return (img, *other)
+
+train.register_dataset('z-celeba', Zoom_Celeba)
+
 
 def get_data(A, mode='train'):
 	return train.default_load_data(A, mode=mode)
