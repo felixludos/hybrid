@@ -498,7 +498,6 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 
 			self.images = self.images[sel]
 			del self.labels
-
 train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
 class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
@@ -525,8 +524,48 @@ class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset t
 		img = img[..., self.cy-self.r:self.cy+self.r, self.cx-self.r:self.cx+self.r]
 
 		return (img, *other)
-
 train.register_dataset('z-celeba', Zoom_Celeba)
+
+
+# Deep Hybridization - using AdaIN
+
+class AdaIN(fd.Model):
+	def __init__(self, A):
+
+		qdim = A.pull('ada_noise', '<>latent_dim')
+		cdim = A.pull('features', '<>din')
+
+
+		ndim = cdim[0] if isinstance(cdim, (tuple,list)) and len(cdim) == 1 else cdim
+
+		if 'net' in A:
+			A.net.din = qdim
+			A.net.dout = cdim
+
+		net = A.pull('net', None)
+
+		if isinstance(qdim, (tuple,list)) and isinstance(cdim, (tuple,list)):
+			raise NotImplementedError
+
+
+		super().__init__(cdim, cdim)
+
+		self.net = net
+
+
+
+	def forward(self, c, n):
+
+		q = self.net(n)
+
+
+
+
+		pass
+
+
+train.register_model('ada-in', AdaIN)
+
 
 
 def get_data(A, mode='train'):

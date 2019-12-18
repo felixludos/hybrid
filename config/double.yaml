@@ -13,6 +13,7 @@ model:
 
     scheduler_type: 'plateau'
     scheduler_decay: .2
+#    scheduler_patience: 10
 
     encoder:
         _type: 'double-enc'
