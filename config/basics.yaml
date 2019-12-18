@@ -52,7 +52,7 @@ model:
     latent_reg_wt: 100
     gan_reg_wt: 10
 
-    disc_steps: 1
+    disc_steps: 5
 
     gan_wt: 1.e-4
 
@@ -74,7 +74,7 @@ model:
         fc: [256, 128, 64]
         latent_dim: 1
 
-        lr: 5.e-3
+#        lr: 5.e-3
         beta1: 0.5
         beta2: 0.9
 
