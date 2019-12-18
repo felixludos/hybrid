@@ -2,7 +2,7 @@ parents: ['basics']
 
 model:
 
-    channels: [64, 64, 64, 128, 128, 128, 256]
+    channels: [64, 64, 128, 128, 128, 256]
     factors: 2
 
     down_type: 'max'
@@ -25,7 +25,7 @@ model:
     generator:
         _type: 'double-dec'
 
-        channels: [256, 128, 128, 128, 64, 64, 64]
+        channels: [256, 128, 128, 128, 64, 64]
 
         output_nonlin: 'sigmoid'
 

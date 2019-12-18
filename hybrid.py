@@ -2,6 +2,7 @@
 import sys, os
 #os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
+import numpy as np
 import torch
 from torch.nn import functional as F
 import torch.distributions as distrib
@@ -107,8 +108,10 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			if 'latent' in info and info.latent is not None:
 				q = info.latent.loc if isinstance(info.latent, distrib.Distribution) else info.latent
 
-				logger.add('histogram', 'latent-norm', q.norm(p=2, dim=-1))
-				logger.add('histogram', 'latent-std', q.std(dim=0))
+				shape = q.size()
+				if len(shape) > 1 and np.product(shape) > 0:
+					logger.add('histogram', 'latent-norm', q.norm(p=2, dim=-1))
+					logger.add('histogram', 'latent-std', q.std(dim=0))
 
 			B, C, H, W = info.original.shape
 			N = min(B, 8)
