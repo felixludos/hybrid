@@ -4,6 +4,7 @@ import sys, os
 
 import numpy as np
 import torch
+from torch import nn
 from torch.nn import functional as F
 import torch.distributions as distrib
 
@@ -500,6 +501,26 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 			del self.labels
 train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
+
+class RedCap_Shapes3D(train.datasets.Shapes3D):
+
+	def __init__(self, dataroot, negative=False, train=True, override=False):
+
+		super().__init__(dataroot=dataroot, labels=True, dout=(3, 64, 64), train=train)
+		self.labeled = False
+
+		if train or override:  # WARNING: this only affects the training/val set
+
+			hues = self.labels[:, :3]
+			sel = self.labels[:, 2].isclose(torch.tensor(0.)) * self.labels[:, -2].isclose(torch.tensor(3.))
+
+			if not negative:
+				sel = torch.logical_not(sel)
+
+			self.images = self.images[sel]
+			del self.labels
+train.register_dataset('redcap-3dshapes', CR_Shapes3D)
+
 class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
 
 	def __init__(self, dataroot, label_type=None, train=True, size=128):
@@ -535,36 +556,176 @@ class AdaIN(fd.Model):
 		qdim = A.pull('ada_noise', '<>latent_dim')
 		cdim = A.pull('features', '<>din')
 
+		pixelwise = A.pull('pixelwise', False)
 
-		ndim = cdim[0] if isinstance(cdim, (tuple,list)) and len(cdim) == 1 else cdim
+		ndim = cdim[0] if isinstance(cdim, (tuple, list)) and not pixelwise else cdim
 
 		if 'net' in A:
 			A.net.din = qdim
-			A.net.dout = cdim
+			A.net.dout = ndim
 
 		net = A.pull('net', None)
 
 		if isinstance(qdim, (tuple,list)) and isinstance(cdim, (tuple,list)):
 			raise NotImplementedError
 
-
 		super().__init__(cdim, cdim)
 
 		self.net = net
+		self.noise = None
 
+	def default_noise(self, n):
+		return torch.zeros(n.size(0), *self.dout, device=n.device, dtype=n.dtype)
 
+	def process_noise(self, n):
+		if self.net is None:
+			return self.default_noise(n)
+		return self.net(n)
 
-	def forward(self, c, n):
+	def include_noise(self, x, q):
 
-		q = self.net(n)
+		if len(x.shape) != len(q.shape):
+			assert len(x.shape) > len(q.shape), 'not the right sizes: {} vs {}'.format(x.shape, q.shape)
+			q = q.view(*q.shape, *(1,)*(len(x.shape)-len(q.shape)))
 
+		return x + q
 
+	def set_noise(self, n):
+		self.noise = n
 
-
-		pass
-
-
+	def forward(self, x, n=None):
+		if n is None and self.noise is not None:
+			n = self.noise
+			self.noise = None
+		if n is not None:
+			q = self.process_noise(n)
+			x = self.include_noise(x, q)
+		return x
 train.register_model('ada-in', AdaIN)
+
+class Norm_AdaIN(AdaIN):
+
+	def __init__(self, A):
+
+		if 'net' in A:
+			assert '_mod' in A.net and A.net._mod == 'norm', 'must output a distribution'
+
+		super().__init__(A)
+
+	def include_noise(self, x, q):
+
+		mu, sigma = q.mu, q.sigma
+
+		if len(x.shape) != len(mu.shape):
+			assert len(x.shape) > len(mu.shape), 'not the right sizes: {} vs {}'.format(x.shape, mu.shape)
+			mu = mu.view(*mu.shape, *(1,)*(len(x.shape)-len(mu.shape)))
+			sigma = sigma.view(*sigma.shape, *(1,) * (len(x.shape) - len(sigma.shape)))
+
+		return sigma*x + mu
+train.register_model('norm-ada-in', AdaIN)
+
+class AdaIn_Double_Decoder(models.Double_Decoder):
+
+	def __init__(self, A):
+
+		adain_latent_dim = A.pull('adain_latent_dim', None)
+		full_latent_dim = A.pull('latent_dim', '<>din')
+
+		if adain_latent_dim is not None:
+			A.latent_dim = full_latent_dim - adain_latent_dim
+
+		super().__init__(A)
+
+		if adain_latent_dim is not None:
+			self.din = full_latent_dim
+
+		self.adain_latent_dim = adain_latent_dim
+
+	def _create_layers(self, chns, factors, internal_channels, squeeze, A):
+
+		between_blocks = len(chns)-2
+		adains = A.pull('adains', [True] * between_blocks)
+		try:
+			len(adains)
+		except TypeError:
+			adains = [adains]
+		if len(adains) != between_blocks:
+			adains = adains * between_blocks
+		adains = iter(adains)
+
+		splits = A.pull('splits', None)
+		try:
+			len(splits)
+		except TypeError:
+			splits = [splits]
+		if len(splits) != between_blocks:
+			splits = splits * between_blocks
+		# assert len(splits) ==
+		total_adain_dim = A.pull('adain_latent_dim', '<>latent_dim', '<>din')
+		if splits[0] is not None:
+			assert total_adain_dim == sum(splits), '{} vs {}'.format(total_adain_dim, sum(splits))
+			self.splits = splits
+		else:
+			self.splits = None
+		splits = iter(splits)
+
+		nonlin = A.pull('nonlin', 'elu')
+		output_nonlin = A.pull('output_nonlin', None)
+		output_norm_type = A.pull('output_norm_type', None)
+
+		up_type = A.pull('up_type', 'bilinear')
+		norm_type = A.pull('norm_type', None)
+		residual = A.pull('residual', False)
+
+		last_chn = chns[-2:]
+		chns = chns[:-1]
+
+		layers = []
+
+		alayers = []
+
+		for ichn, ochn in zip(chns, chns[1:]):
+			layers.append(
+				models.DoubleDeconvLayer(in_channels=ichn, out_channels=ochn, factor=next(factors),
+				                            up_type=up_type, norm_type=norm_type,
+				                            nonlin=nonlin, output_nonlin=nonlin,
+				                            internal_channels=next(internal_channels), squeeze=next(squeeze),
+				                            residual=residual,
+				                            )
+			)
+			if next(adains):
+
+				dim = next(splits)
+				if dim is not None:
+					A.adain.ada_noise = dim
+					A.adain.features = ochn
+
+				adain = A.pull('adain')
+
+				if 'ada_noise' in A.adain:
+					del A.adain.ada_noise
+				if 'features' in A.adain:
+					del A.adain.features
+
+				alayers.append(adain)
+				layers.append(adain)
+		layers.append(
+			models.DoubleDeconvLayer(in_channels=last_chn[0], out_channels=last_chn[1], factor=next(factors),
+			                            up_type=up_type, norm_type=output_norm_type,
+			                            nonlin=nonlin, output_nonlin=output_nonlin,
+			                            internal_channels=next(internal_channels), squeeze=next(squeeze),
+			                            residual=residual,
+			                            )
+		)
+
+		self.ada_ins = alayers
+
+		return nn.ModuleList(layers)
+
+	def forward(self, q):
+		for adain in self.ada_ins:
+			adain.set_noise(q)
+		return super().forward(q)
 
 
 
