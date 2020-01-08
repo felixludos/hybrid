@@ -643,6 +643,8 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 
 		super().__init__(A)
 
+		A.latent_dim = full_latent_dim
+
 		if adain_latent_dim is not None:
 			self.din = full_latent_dim
 
