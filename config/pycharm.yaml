@@ -1,7 +1,7 @@
 
-parents: ['fdvae', 'large-double', 'celeba']
+#parents: ['fdvae', 'large-double', 'celeba']
 
-#parents: ['gan', 'double', '3dshapes']
+parents: ['wae', 'adain-dec', '3dshapes']
 
 #
 #
@@ -19,7 +19,7 @@ dataset:
 ##training:
 ##  max_iter: 100
 #
-model:
+#model:
 #  _type: wpp
 #
 ##  gan_wt: 1
@@ -34,14 +34,14 @@ model:
 ##  scheduler_cooldown: 2
 ##  scheduler_step: 10
 
-  squeeze: True
-#  internal_channels: [256, 256, 256, 512, 512]
-  internal_channels: [256, 256, 256, 512, 512, 1024]
-
-  generator:
-
-#    internal_channels: [512, 512, 256, 256, 256]
-    internal_channels: [1024, 512, 512, 256, 256, 256]
+#  squeeze: True
+##  internal_channels: [256, 256, 256, 512, 512]
+#  internal_channels: [256, 256, 256, 512, 512, 1024]
+#
+#  generator:
+#
+##    internal_channels: [512, 512, 256, 256, 256]
+#    internal_channels: [1024, 512, 512, 256, 256, 256]
 
 #  encoder:
 #    scheduler_type: 'plateau'

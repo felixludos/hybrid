@@ -608,13 +608,13 @@ class Norm_AdaIN(AdaIN):
 	def __init__(self, A):
 
 		if 'net' in A:
-			assert '_mod' in A.net and A.net._mod == 'norm', 'must output a distribution'
+			assert '_mod' in A.net and A.net._mod == 'normal', 'must output a distribution'
 
 		super().__init__(A)
 
 	def include_noise(self, x, q):
 
-		mu, sigma = q.mu, q.sigma
+		mu, sigma = q.loc, q.scale
 
 		if len(x.shape) != len(mu.shape):
 			assert len(x.shape) > len(mu.shape), 'not the right sizes: {} vs {}'.format(x.shape, mu.shape)
@@ -622,17 +622,24 @@ class Norm_AdaIN(AdaIN):
 			sigma = sigma.view(*sigma.shape, *(1,) * (len(x.shape) - len(sigma.shape)))
 
 		return sigma*x + mu
-train.register_model('norm-ada-in', AdaIN)
+train.register_model('norm-ada-in', Norm_AdaIN)
 
 class AdaIn_Double_Decoder(models.Double_Decoder):
 
 	def __init__(self, A):
 
-		adain_latent_dim = A.pull('adain_latent_dim', None)
+		adain_latent_dim = A.pull('adain_latent_dim', 0)
 		full_latent_dim = A.pull('latent_dim', '<>din')
 
-		if adain_latent_dim is not None:
-			A.latent_dim = full_latent_dim - adain_latent_dim
+		const_start = False
+		init_latent_dim = full_latent_dim - adain_latent_dim
+		assert init_latent_dim >= 0, 'invalid: {}'.format(A.latent_dim)
+		if init_latent_dim == 0:
+			init_latent_dim = 1
+			const_start = True
+		A.latent_dim = init_latent_dim
+		A.full_latent_dim = full_latent_dim
+		A.adain_latent_dim = adain_latent_dim
 
 		super().__init__(A)
 
@@ -640,6 +647,9 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 			self.din = full_latent_dim
 
 		self.adain_latent_dim = adain_latent_dim
+
+		self.init_latent_dim = init_latent_dim
+		self.const_start = const_start
 
 	def _create_layers(self, chns, factors, internal_channels, squeeze, A):
 
@@ -654,20 +664,19 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 		adains = iter(adains)
 
 		splits = A.pull('splits', None)
-		try:
-			len(splits)
-		except TypeError:
-			splits = [splits]
-		if len(splits) != between_blocks:
-			splits = splits * between_blocks
-		# assert len(splits) ==
-		total_adain_dim = A.pull('adain_latent_dim', '<>latent_dim', '<>din')
-		if splits[0] is not None:
-			assert total_adain_dim == sum(splits), '{} vs {}'.format(total_adain_dim, sum(splits))
-			self.splits = splits
-		else:
-			self.splits = None
-		splits = iter(splits)
+		if splits is not None:
+			try:
+				len(splits)
+			except TypeError:
+				splits = [splits]
+			if len(splits) != between_blocks:
+				splits = splits * between_blocks
+			splits = splits[:between_blocks]
+
+		self.splits = splits
+		if splits is not None:
+			splits = iter(splits)
+		full_latent = A.pull('full_latent_dim')
 
 		nonlin = A.pull('nonlin', 'elu')
 		output_nonlin = A.pull('output_nonlin', None)
@@ -695,7 +704,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 			)
 			if next(adains):
 
-				dim = next(splits)
+				dim = next(splits) if splits is not None else full_latent
 				if dim is not None:
 					A.adain.ada_noise = dim
 					A.adain.features = ochn
@@ -723,10 +732,22 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 		return nn.ModuleList(layers)
 
 	def forward(self, q):
-		for adain in self.ada_ins:
-			adain.set_noise(q)
-		return super().forward(q)
 
+		if self.const_start:
+			init = torch.ones(q.size(0), 1, dtype=q.dtype, device=q.device)
+		else:
+			init, q = q[...,:self.init_latent_dim], q[...,self.init_latent_dim:]
+
+		noises = [q]*len(self.ada_ins)
+		if self.splits is not None:
+			noises = torch.split(q,self.splits, dim=-1)
+
+		for adain, noise in zip(self.ada_ins, noises):
+			adain.set_noise(noise)
+
+		return super().forward(init)
+
+train.register_model('adain-double-dec', AdaIn_Double_Decoder)
 
 
 def get_data(A, mode='train'):
