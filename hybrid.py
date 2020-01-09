@@ -111,8 +111,12 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 				shape = q.size()
 				if len(shape) > 1 and np.product(shape) > 0:
-					logger.add('histogram', 'latent-norm', q.norm(p=2, dim=-1))
-					logger.add('histogram', 'latent-std', q.std(dim=0))
+					try:
+						logger.add('histogram', 'latent-norm', q.norm(p=2, dim=-1))
+						logger.add('histogram', 'latent-std', q.std(dim=0))
+					except ValueError:
+						print('\n\n\nWARNING: histogram just failed\n')
+						print(q.shape, q.norm(p=2, dim=-1).shape)
 
 			B, C, H, W = info.original.shape
 			N = min(B, 8)
