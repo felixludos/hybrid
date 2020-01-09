@@ -16,8 +16,8 @@ dataset:
 ##output:
 ##  unique_tests: True
 #
-training:
-  max_iter: 100
+#training:
+#  max_iter: 100
 #
 #model:
 #  _type: wpp
