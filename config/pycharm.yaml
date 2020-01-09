@@ -1,7 +1,11 @@
 
 #parents: ['fdvae', 'large-double', 'celeba']
 
-parents: ['wae', 'adain-dec', '3dshapes']
+#parents: ['wae', 'adain-dec', '3dshapes']
+
+parents: ['fwae', 'dspr']
+
+#resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
 #
 #
