@@ -533,6 +533,37 @@ class RedBall_Shapes3D(train.datasets.Shapes3D):
 			del self.labels
 train.register_dataset('redball-3dshapes', RedBall_Shapes3D)
 
+
+class RGBBall_Shapes3D(train.datasets.Shapes3D):
+
+	def __init__(self, dataroot, negative=False, train=True, override=False):
+
+		super().__init__(dataroot=dataroot, labels=True, dout=(3, 64, 64), train=train)
+		self.labeled = False
+
+		if train or override:  # WARNING: this only affects the training/val set
+
+			# hues = self.labels[:, :3]
+			# sel = self.labels[:, 2].isclose(torch.tensor(0.)) * self.labels[:, -2].isclose(torch.tensor(3.))
+
+			sel = torch.logical_not(self.labels[:, 2].isclose(torch.tensor(0.))
+			       + self.labels[:, 2].isclose(torch.tensor(0.3))
+			       + self.labels[:, 2].isclose(torch.tensor(0.7))) * self.labels[:, -2].isclose(torch.tensor(2.))
+			# sel += torch.logical_not(self.labels[:, -2].isclose(torch.tensor(3.)))
+
+			if not negative:
+				sel = torch.logical_not(sel)
+
+			before = len(self.images)
+			self.images = self.images[sel]
+			after = len(self.images)
+
+			print('Before: {}, After: {}, Loss: {}'.format(before, after, (before-after)/before))
+
+			del self.labels
+train.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
+
+
 class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
 
 	def __init__(self, dataroot, label_type=None, train=True, size=128):
