@@ -486,6 +486,55 @@ class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 train.register_model('fdwae', Dropin_FWAE)
 
 
+class Filtered_Shapes3D(train.datasets.Shapes3D):
+	def __init__(self, dataroot, train=True, labels=True, dout=(3,64,64), negative=False, override=False):
+		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
+
+		self.labeled = labels
+
+		if train or override:
+			sel = self.selection(self.images, self.labels)
+
+			lost = sel.sum().item()
+			print('Filtering out {}/{} samples'.format(lost, len(self.images)))
+
+			ridx = None
+			if not negative:
+				try:
+					ridx = self.replacements(self.images, self.labels)
+				except NotImplementedError:
+					sel = torch.logical_not(sel) # keep good samples
+
+			if ridx is None:
+				self.images = self.images[sel]
+				self.labels = self.labels[sel]
+			else:
+
+				swaps = len(ridx)
+
+				print('Resampling from {} replacements'.format(swaps))
+
+				copies, extra = lost // swaps, lost % swaps
+
+				extra_idx = torch.randperm(swaps)[:extra]
+
+				reps = torch.cat([ridx] * copies + [extra_idx])
+
+				self.images[sel] = self.images[reps]
+				self.labels[sel] = self.labels[reps]
+
+		if not self.labeled:
+			del self.labels
+
+	# using self.images and self.labels
+	def selection(self, images, labels): # return bools 1 if sample should be REMOVED
+		raise NotImplementedError
+
+	def replacements(self, images, labels): # return ints of possible replacements
+		raise NotImplementedError
+
+# ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape', 'orientation']
+
 class CR_Shapes3D(train.datasets.Shapes3D):
 	
 	def __init__(self, dataroot, negative=False, train=True, override=False):
@@ -503,65 +552,22 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 
 			self.images = self.images[sel]
 			del self.labels
-train.register_dataset('cr-3dshapes', CR_Shapes3D)
+# train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
+class RGBBall_Shapes3D(Filtered_Shapes3D):
 
-class RedBall_Shapes3D(train.datasets.Shapes3D):
+	def selection(self, images, labels): # all non-RGB balls
+		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+                  + labels[:, 2].isclose(torch.tensor(0.3))
+                  + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
 
-	def __init__(self, dataroot, negative=False, train=True, override=False):
+	def replacements(self, images, labels): # any RGB balls
+		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+                    + labels[:, 2].isclose(torch.tensor(0.3))
+                    + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
 
-		super().__init__(dataroot=dataroot, labels=True, dout=(3, 64, 64), train=train)
-		self.labeled = False
-
-		if train or override:  # WARNING: this only affects the training/val set
-
-			# hues = self.labels[:, :3]
-			# sel = self.labels[:, 2].isclose(torch.tensor(0.)) * self.labels[:, -2].isclose(torch.tensor(3.))
-
-			sel = self.labels[:, 2].gt(torch.tensor(0.05)) * self.labels[:, -2].isclose(torch.tensor(2.))
-			# sel += torch.logical_not(self.labels[:, -2].isclose(torch.tensor(3.)))
-
-			if not negative:
-				sel = torch.logical_not(sel)
-
-			before = len(self.images)
-			self.images = self.images[sel]
-			after = len(self.images)
-
-			print('Before: {}, After: {}, Loss: {}'.format(before, after, (before-after)/before))
-
-			del self.labels
-train.register_dataset('redball-3dshapes', RedBall_Shapes3D)
-
-
-class RGBBall_Shapes3D(train.datasets.Shapes3D):
-
-	def __init__(self, dataroot, negative=False, train=True, override=False):
-
-		super().__init__(dataroot=dataroot, labels=True, dout=(3, 64, 64), train=train)
-		self.labeled = False
-
-		if train or override:  # WARNING: this only affects the training/val set
-
-			# hues = self.labels[:, :3]
-			# sel = self.labels[:, 2].isclose(torch.tensor(0.)) * self.labels[:, -2].isclose(torch.tensor(3.))
-
-			sel = torch.logical_not(self.labels[:, 2].isclose(torch.tensor(0.))
-			       + self.labels[:, 2].isclose(torch.tensor(0.3))
-			       + self.labels[:, 2].isclose(torch.tensor(0.7))) * self.labels[:, -2].isclose(torch.tensor(2.))
-			# sel += torch.logical_not(self.labels[:, -2].isclose(torch.tensor(3.)))
-
-			if not negative:
-				sel = torch.logical_not(sel)
-
-			before = len(self.images)
-			self.images = self.images[sel]
-			after = len(self.images)
-
-			print('Before: {}, After: {}, Loss: {}'.format(before, after, (before-after)/before))
-
-			del self.labels
 train.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
+
 
 
 class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
