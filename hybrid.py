@@ -8,6 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 import torch.distributions as distrib
 
+import h5py as hf
 #%matplotlib tk
 # plt.switch_backend('Agg')
 # from sklearn.decomposition import PCA
@@ -486,44 +487,90 @@ class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 train.register_model('fdwae', Dropin_FWAE)
 
 
-class CR_Shapes3D(train.datasets.Shapes3D):
-	
-	def __init__(self, dataroot, negative=False, train=True, override=False):
+class Filtered_Shapes3D(train.datasets.Shapes3D):
+	def __init__(self, dataroot, train=True, labels=True, dout=(3,64,64),
+	             negative=False, override=False, replace=True):
+		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
 
-		super().__init__(dataroot=dataroot, labels=True, dout=(3,64,64), train=train)
-		self.labeled = False
+		self.labeled = labels
 
-		if train or override: # WARNING: this only affects the training/val set
+		if train or override:
+			sel = self.selection(self.images, self.labels)
 
-			hues = self.labels[:,:3]
-			sel = hues.isclose(torch.tensor(0.)).sum(-1) * hues.isclose(torch.tensor(0.5)).sum(-1)
+			lost = sel.sum().item()
+			print('Filtering out {}/{} samples'.format(lost, len(self.images)))
 
-			if not negative:
-				sel = torch.logical_not(sel)
+			ridx = None
+			if not negative and replace:
+				try:
+					ridx = self.replacements(self.images, self.labels)
+				except NotImplementedError:
+					sel = torch.logical_not(sel) # keep good samples
 
-			self.images = self.images[sel]
+			if ridx is None:
+				self.images = self.images[sel]
+				self.labels = self.labels[sel]
+			else:
+
+				swaps = len(ridx)
+
+				print('Resampling from {} replacements'.format(swaps))
+
+				copies, extra = lost // swaps, lost % swaps
+
+				extra_idx = torch.randperm(swaps)[:extra]
+
+				reps = torch.cat([ridx] * copies + [extra_idx])
+
+				self.images[sel] = self.images[reps]
+				self.labels[sel] = self.labels[reps]
+
+		if not self.labeled:
 			del self.labels
-train.register_dataset('cr-3dshapes', CR_Shapes3D)
+
+	# using self.images and self.labels
+	def selection(self, images, labels): # return bools 1 if sample should be REMOVED
+		raise NotImplementedError
+
+	def replacements(self, images, labels): # return ints of possible replacements
+		raise NotImplementedError
+
+# ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape', 'orientation']
+
+class Redball_Shapes3D(Filtered_Shapes3D):
+
+	def selection(self, images, labels): # all non-red balls
+		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
+
+	def replacements(self, images, labels): # any red balls
+		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
+train.register_dataset('redball-3dshapes', Redball_Shapes3D)
+
+class RBBall_Shapes3D(Filtered_Shapes3D):
+
+	def selection(self, images, labels): # all non-RGB balls
+		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+                  + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+
+	def replacements(self, images, labels): # any RGB balls
+		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+                    + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+train.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
+
+class RGBBall_Shapes3D(Filtered_Shapes3D):
+
+	def selection(self, images, labels): # all non-RGB balls
+		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+                  + labels[:, 2].isclose(torch.tensor(0.3))
+                  + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+
+	def replacements(self, images, labels): # any RGB balls
+		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+                    + labels[:, 2].isclose(torch.tensor(0.3))
+                    + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+train.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
 
-class RedCap_Shapes3D(train.datasets.Shapes3D):
-
-	def __init__(self, dataroot, negative=False, train=True, override=False):
-
-		super().__init__(dataroot=dataroot, labels=True, dout=(3, 64, 64), train=train)
-		self.labeled = False
-
-		if train or override:  # WARNING: this only affects the training/val set
-
-			hues = self.labels[:, :3]
-			sel = self.labels[:, 2].isclose(torch.tensor(0.)) * self.labels[:, -2].isclose(torch.tensor(3.))
-
-			if not negative:
-				sel = torch.logical_not(sel)
-
-			self.images = self.images[sel]
-			del self.labels
-train.register_dataset('redcap-3dshapes', CR_Shapes3D)
 
 class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
 
@@ -550,6 +597,68 @@ class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset t
 
 		return (img, *other)
 train.register_dataset('z-celeba', Zoom_Celeba)
+
+
+class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
+	def __init__(self, dataroot, game, train=True):
+
+		dataroot = os.path.join(dataroot, 'atari', game)
+
+		total = [n for n in sorted(os.listdir(dataroot)) if '.h5' in n]
+
+		# assert len(total) == 16 # TODO: maybe change to 20 (requires recollecting data)
+
+		fnames = total[:-4] if train else total[-4:]
+
+		print('Found {} datafiles. Using {}'.format(len(total), len(fnames)))
+
+		raw = []
+
+		for fname in fnames:
+
+			with hf.File(os.path.join(dataroot, fname), 'r') as f:
+				raw.append(f['images'][()].reshape(-1))
+
+		raw = np.asarray(raw).reshape(-1)
+
+		self.raw = raw
+
+		dummy = util.str_to_rgb(raw[0])
+
+		H, W, C = dummy.shape
+
+		din = 3, 128, 128
+
+		super().__init__(din=din, dout=din)
+
+
+	def __len__(self):
+		return len(self.raw)
+
+	def __getitem__(self, idx):
+		img = torch.from_numpy(util.str_to_rgb(self.raw[idx])).permute(2,0,1).float().unsqueeze(0) / 255.
+		img = F.interpolate(img, size=(128,128), mode='bilinear').squeeze(0)
+		return img,
+
+class Asterix_Playback(Atari_Playback):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, game='Asterix', **kwargs)
+train.register_dataset('asterix', Asterix_Playback)
+
+class Seaquest_Playback(Atari_Playback):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, game='Seaquest', **kwargs)
+train.register_dataset('seaquest', Seaquest_Playback)
+
+class SpaceInvaders_Playback(Atari_Playback):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, game='SpaceInvaders', **kwargs)
+train.register_dataset('spaceinv', SpaceInvaders_Playback)
+
+class Pacman_Playback(Atari_Playback):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, game='MsPacman', **kwargs)
+train.register_dataset('pacman', Pacman_Playback)
 
 
 # Deep Hybridization - using AdaIN
