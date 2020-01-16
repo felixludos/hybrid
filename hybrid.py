@@ -8,6 +8,7 @@ from torch import nn
 from torch.nn import functional as F
 import torch.distributions as distrib
 
+import h5py as hf
 #%matplotlib tk
 # plt.switch_backend('Agg')
 # from sklearn.decomposition import PCA
@@ -554,6 +555,16 @@ class CR_Shapes3D(train.datasets.Shapes3D):
 			del self.labels
 # train.register_dataset('cr-3dshapes', CR_Shapes3D)
 
+
+class Redball_Shapes3D(Filtered_Shapes3D):
+
+	def selection(self, images, labels): # all non-red balls
+		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
+
+	def replacements(self, images, labels): # any red balls
+		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
+train.register_dataset('redball-3dshapes', Redball_Shapes3D)
+
 class RGBBall_Shapes3D(Filtered_Shapes3D):
 
 	def selection(self, images, labels): # all non-RGB balls
@@ -565,7 +576,6 @@ class RGBBall_Shapes3D(Filtered_Shapes3D):
 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
                     + labels[:, 2].isclose(torch.tensor(0.3))
                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-
 train.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
 
@@ -595,6 +605,21 @@ class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset t
 
 		return (img, *other)
 train.register_dataset('z-celeba', Zoom_Celeba)
+
+
+class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
+	def __init__(self, dataroot, train=True):
+
+
+
+
+
+		super().__init__()
+
+
+
+
+
 
 
 # Deep Hybridization - using AdaIN
