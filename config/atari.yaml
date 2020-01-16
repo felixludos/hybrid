@@ -1,0 +1,19 @@
+parents: ['large']
+
+#name: 'test-3dshapes'
+
+training:
+    epochs: 100
+
+dataset:
+    name: '<>game'
+
+    batch_size: 32
+
+    val_split: 0.1
+
+#    dataroot: /is/ei/fleeb/workspace/local_data/test-data
+
+
+info:
+    dataset_type: '<>game'
