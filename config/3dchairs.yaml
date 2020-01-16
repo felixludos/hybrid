@@ -1,0 +1,16 @@
+parents: ['basics']
+
+#name: 'test-3dchairs'
+
+training:
+    epochs: 60
+
+dataset:
+    name: '3dchairs'
+
+    batch_size: 64
+
+    val_split: 0.1
+
+info:
+    dataset_type: '3dchairs'
