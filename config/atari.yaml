@@ -16,4 +16,4 @@ dataset:
 
 
 info:
-    dataset_type: '<>game'
+    dataset_type: 'atari'
