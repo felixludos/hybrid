@@ -1,18 +1,13 @@
-parents: ['basics']
+parents: ['large']
 
 model:
 
     channels: [64, 64, 128, 128, 128, 256]
     factors: 2
 
-    down_type: 'max'
-    up_type: 'bilinear'
-    norm_type: 'instance'
 
-    nonlin: 'elu'
-
-    scheduler_type: 'plateau'
-    scheduler_decay: .2
+#    scheduler_type: 'plateau'
+#    scheduler_decay: .2
 
     encoder:
         _type: 'double-enc'
