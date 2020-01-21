@@ -78,7 +78,7 @@ def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
 	return fig
 
 
-def load_fn(S):
+def load_fn(S, **unused):
 
 	cpath = S.ckpt_path
 	A = S.A if 'A' in S else None
@@ -130,7 +130,7 @@ def load_fn(S):
 	S.X = batch[0]
 
 
-def run_model(S):
+def run_model(S, **unused):
 
 	A = S.A
 	dataset = S.dataset
@@ -210,6 +210,8 @@ def run_model(S):
 	save_inds = [0, 1, 2, 3]
 	# save_inds =  []
 
+	saved_walks = []
+
 	for idx in inds:
 
 		walks = []
@@ -248,17 +250,21 @@ def run_model(S):
 			images = []
 			for img in walks_full.cpu().numpy():
 				images.append((img * 255).astype(np.uint8))
-			imageio.mimsave(os.path.join(save_dir, 'walks-idx{}.gif'.format(idx, dim)), images)
 
-			with open(os.path.join(save_dir, 'walks-idx{}.gif'.format(idx, dim)), 'rb') as f:
-				outs.append(display.Image(data=f.read(), format='gif'))
+			saved_walks.append(images)
+
+			# imageio.mimsave(os.path.join(save_dir, 'walks-idx{}.gif'.format(idx, dim)), images)
+			#
+			# with open(os.path.join(save_dir, 'walks-idx{}.gif'.format(idx, dim)), 'rb') as f:
+			# 	outs.append(display.Image(data=f.read(), format='gif'))
 			del walks_full
 
 	all_diffs = torch.stack(all_diffs)
 
 	S.all_diffs = all_diffs
+	S.saved_walks = saved_walks
 
-def viz_originals(S):
+def viz_originals(S, **unused):
 
 	X = S.X
 	img_W = S.img_W
@@ -272,7 +278,7 @@ def viz_originals(S):
 
 	return fig,
 
-def viz_reconstructions(S):
+def viz_reconstructions(S, **unused):
 
 	rec = S.rec
 	img_W = S.img_W
@@ -284,7 +290,7 @@ def viz_reconstructions(S):
 
 	return fig,
 
-def viz_hybrids(S):
+def viz_hybrids(S, **unused):
 
 	hyb = S.hyb
 	img_W = S.img_W
@@ -296,7 +302,7 @@ def viz_hybrids(S):
 
 	return fig,
 
-def viz_generated(S):
+def viz_generated(S, **unused):
 	gen = S.gen
 	img_W = S.img_W
 	border, between = S.border, S.between
@@ -307,7 +313,7 @@ def viz_generated(S):
 
 	return fig,
 
-def viz_latent(S):
+def viz_latent(S, **unused):
 	# if dis_q is None:
 
 	assert 'int_q' in S
@@ -369,10 +375,10 @@ def viz_latent(S):
 		plt.tight_layout()
 
 
-	return fig
+	return fig,
 
 
-def viz_interventions(S):
+def viz_interventions(S, **unused):
 
 	A = S.A
 	X = S.X
@@ -384,8 +390,6 @@ def viz_interventions(S):
 	int_q = S.int_q
 
 	all_diffs = S.all_diffs
-
-
 
 
 	# Intervention Effect
@@ -412,19 +416,35 @@ def viz_interventions(S):
 	plt.ylabel('Effect')
 	plt.tight_layout()
 
-	return fig
+	return fig,
+
+def viz_traversals(S, **unused):
+
+	walks = S.saved_walks
+
+	anims = [util.Video(walk) for walk in walks]
+
+	return anims
+
+
+def eval_fid(S, **unused):
+	pass
 
 
 class Hybrid_Controller(train.Run_Manager):
 	def __init__(self):
 		super().__init__(load_fn=load_fn, run_model_fn=run_model,
+		                 eval_fns=OrderedDict({
+
+		                 }),
 		                 viz_fns=OrderedDict({
-			'original': viz_originals,
-			'recs': viz_reconstructions,
-			'gens': viz_generated,
-			'hybrid': viz_hybrids,
-			'latent': viz_latent,
-			'effects': viz_interventions,
-		}))
+							'original': viz_originals,
+							'recs': viz_reconstructions,
+							'gens': viz_generated,
+							'hybrid': viz_hybrids,
+							'latent': viz_latent,
+							'effects': viz_interventions,
+							'traversals': viz_traversals,
+						}))
 
 
