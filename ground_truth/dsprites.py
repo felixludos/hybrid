@@ -39,7 +39,7 @@ class DSprites(ground_truth_data.GroundTruthData):
   4 - position y (32 different values)
   """
 
-  def __init__(self, data_file = 'data/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz', latent_factor_indices=None):
+  def __init__(self, data_file = 'data/dsprites/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz', latent_factor_indices=None):
     # By default, all factors (including shape) are considered ground truth
     # factors.
     if latent_factor_indices is None:
