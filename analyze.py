@@ -86,9 +86,14 @@ def load_fn(S, **unused):
 	A, (dataset, *other), model, ckpt = train.load(path=cpath, A=A, get_model=get_model, get_data=get_data,
 	                                               return_args=True, return_ckpt=True)
 
-	os.path.basename(cpath)
+
+	trainset = dataset
+	if len(other) and other[0] is not None:
+		print('*** Using validation set')
+		dataset = other[0]
 
 	S.A = A
+	S.trainset = trainset
 	S.dataset = dataset
 	S.other = other
 	S.model = model
@@ -130,7 +135,7 @@ def load_fn(S, **unused):
 	S.X = batch[0]
 
 
-def run_model(S, **unused):
+def run_model(S, pbar=None, **unused):
 
 	A = S.A
 	dataset = S.dataset
@@ -169,12 +174,10 @@ def run_model(S, **unused):
 	S.qdis = qdis
 	S.qmle = qmle
 
-	_tmp = A.dataset.batch_size
-	A.dataset.batch_size = 128  # number of samples to get distribution
+	batch_size = 128  # number of samples to get distribution
 	util.set_seed(0)
-	int_batch = next(iter(train.get_loaders(dataset, batch_size=A.dataset.batch_size, num_workers=A.num_workers,
+	int_batch = next(iter(train.get_loaders(dataset, batch_size=batch_size, num_workers=A.num_workers,
 	                                        shuffle=True, drop_last=False, )))
-	A.dataset.batch_size = _tmp
 	with torch.no_grad():
 		int_batch = util.to(int_batch, A.device)
 		int_X, = int_batch
@@ -264,6 +267,54 @@ def run_model(S, **unused):
 	S.all_diffs = all_diffs
 	S.saved_walks = saved_walks
 
+	other = S.other
+
+	full_q = None
+
+	if not len(other) or other[0] is None:
+		print('No validation set found')
+
+	elif model.enc is not None:
+
+		valset = other[0]
+
+		print('valset: {}'.format(len(valset)))
+
+		valloader = train.get_loaders(valset, batch_size=128, num_workers=A.num_workers,
+		                                        shuffle=False, drop_last=False, )
+
+		if pbar is not None:
+			valloader = pbar(valloader, total=len(valloader))
+			valloader.set_description('Validation set')
+
+		full_q = []
+
+		for batch in valloader:
+			batch = util.to(batch, A.device)
+			X, = batch
+
+			with torch.no_grad():
+
+				q = model.encode(X)
+				if isinstance(q, distrib.Distribution):
+					q = torch.stack([q.loc, q.scale], 1)
+				full_q.append(q.cpu())
+
+		if len(full_q):
+			full_q = torch.cat(full_q)
+
+			print(full_q.shape)
+
+			if len(full_q.shape) > 2:
+				full_q = distrib.Normal(loc=full_q[:,0], scale=full_q[:,1])
+
+		else:
+			full_q = None
+
+	S.full_q = full_q
+
+
+
 def viz_originals(S, **unused):
 
 	X = S.X
@@ -318,8 +369,19 @@ def viz_latent(S, **unused):
 
 	assert 'int_q' in S
 
-	int_q = S.int_q
-	dis_int_q = S.dis_int_q
+	if 'full_q' in S and S.full_q is not None:
+		int_q = S.full_q
+		if isinstance(S.full_q, distrib.Distribution):
+			dis_int_q = S.full_q
+		else:
+			dis_int_q = None
+
+	else:
+
+		int_q = S.int_q
+		dis_int_q = S.dis_int_q
+
+	print(int_q.shape)
 
 	Xs = np.arange(int_q.shape[-1]) + 1
 	inds = np.stack([Xs] * int_q.shape[0])
@@ -368,7 +430,8 @@ def viz_latent(S, **unused):
 
 		sns.violinplot(x='x', y='y', hue=hue,
 		               data=df, split=split, color=color, palette=palette,
-		               scale="count", inner=inner, gridsize=500, )
+		               scale="count", inner=inner, gridsize=100, )
+		plt.ylim(-3, 3)
 		plt.title('Distributions of Latent Dimensions')
 		plt.xlabel('Dimension')
 		plt.ylabel('Values')
@@ -409,7 +472,7 @@ def viz_interventions(S, **unused):
 	fig, ax = plt.subplots(figsize=(9, 3))
 	sns.violinplot(x='x', y='y', hue=hue,
 	               data=df, split=split, color=color, palette=palette,
-	               scale="count", inner=inner, gridsize=500)
+	               scale="count", inner=inner, gridsize=100)
 	plt.title('Intervention Effect on Image')
 	plt.xlabel('Dimension')
 
@@ -427,7 +490,52 @@ def viz_traversals(S, **unused):
 	return anims
 
 
-def eval_fid(S, **unused):
+def _run_fid(generate, pbar=None):
+
+
+	pass
+
+
+
+def eval_prior_fid(S, pbar=None, **unused):
+
+	model = S.model
+
+	def generate(N):
+		with torch.no_grad():
+			return model.generate(N)
+
+	return _run_fid(generate, pbar=pbar)
+
+def eval_hybrid_fid(S, pbar=None, **unused):
+
+	A = S.A
+
+	Q = S.full_q
+	assert Q is not None, 'no latent space'
+
+	if isinstance(Q, distrib.Distribution):
+		Q = Q.loc
+
+	model = S.model
+
+	def generate(N):
+
+		idx = torch.randperm(len(Q))[:N]
+
+		q = Q[idx].to(A.device)
+
+		with torch.no_grad():
+			gen = model.decode(util.shuffle_dim(q)).detach()
+
+		return gen
+
+	return _run_fid(generate, pbar=pbar)
+
+def eval_disentanglement(S, **unused):
+
+
+
 	pass
 
 

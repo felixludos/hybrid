@@ -18,13 +18,13 @@ from foundation import models
 from foundation import data as datautils
 from foundation.models import unsup
 from foundation import util
-from foundation import train
+from foundation import train as trainutils
 
 MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
-train.register_config_dir(os.path.join(MY_PATH, 'config'))
+trainutils.register_config_dir(os.path.join(MY_PATH, 'config'))
 
-train.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
+trainutils.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
 
 class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Schedulable, fd.Trainable_Model):
 
@@ -323,14 +323,14 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 	def generate(self, N=1):
 		q = self.sample_prior(N)
 		return self.decode(q)
-train.register_model('wpp', Wasserstein_PP)
+trainutils.register_model('wpp', Wasserstein_PP)
 
 class WGAN(Wasserstein_PP):
 	def __init__(self, A):
 		super().__init__(A)
 
 		assert self.gan_wt == 1, 'gan_wt should be 1: {}'.format(self.gan_wt)
-train.register_model('wgan', WGAN)
+trainutils.register_model('wgan', WGAN)
 
 
 class WPP_VAE(Wasserstein_PP):
@@ -346,7 +346,7 @@ class WPP_VAE(Wasserstein_PP):
 
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
-train.register_model('vpp', WPP_VAE)
+trainutils.register_model('vpp', WPP_VAE)
 
 
 class WPP_RAMMC(WPP_VAE):
@@ -395,13 +395,13 @@ class Dropin_WPP(Wasserstein_PP):
 		
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q*sel + hyb*(1-sel)
-train.register_model('dwae', Dropin_WPP)
+trainutils.register_model('dwae', Dropin_WPP)
 
 class Dropout_WPP(Dropin_WPP):
 	def hybridize(self, q):
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q * sel
-train.register_model('dout-wae', Dropout_WPP)
+trainutils.register_model('dout-wae', Dropout_WPP)
 
 class Factor_WPP(Wasserstein_PP):
 	def __init__(self, A):
@@ -468,26 +468,26 @@ class Factor_WPP(Wasserstein_PP):
 			reg = (1-self.prior_wt)*reg + self.prior_wt*reg_prior
 			
 		return reg
-train.register_model('fwpp', Factor_WPP)
+trainutils.register_model('fwpp', Factor_WPP)
 
 class FactorVAE(Factor_WPP, WPP_VAE):
 	pass
-train.register_model('fvpp', FactorVAE)
+trainutils.register_model('fvpp', FactorVAE)
 
 class DropinVAE(WPP_VAE, Dropin_WPP):
 	pass
-train.register_model('dvae', DropinVAE)
+trainutils.register_model('dvae', DropinVAE)
 
 class Dropin_FVAE(FactorVAE, Dropin_WPP):
 	pass
-train.register_model('fdvae', Dropin_FVAE)
+trainutils.register_model('fdvae', Dropin_FVAE)
 
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
-train.register_model('fdwae', Dropin_FWAE)
+trainutils.register_model('fdwae', Dropin_FWAE)
 
 
-class Filtered_Shapes3D(train.datasets.Shapes3D):
+class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
 	def __init__(self, dataroot, train=True, labels=True, dout=(3,64,64),
 	             negative=False, override=False, replace=True):
 		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
@@ -544,7 +544,7 @@ class Redball_Shapes3D(Filtered_Shapes3D):
 
 	def replacements(self, images, labels): # any red balls
 		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
-train.register_dataset('redball-3dshapes', Redball_Shapes3D)
+trainutils.register_dataset('redball-3dshapes', Redball_Shapes3D)
 
 class RBBall_Shapes3D(Filtered_Shapes3D):
 
@@ -555,7 +555,7 @@ class RBBall_Shapes3D(Filtered_Shapes3D):
 	def replacements(self, images, labels): # any RGB balls
 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-train.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
+trainutils.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
 
 class RGBBall_Shapes3D(Filtered_Shapes3D):
 
@@ -568,11 +568,11 @@ class RGBBall_Shapes3D(Filtered_Shapes3D):
 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
                     + labels[:, 2].isclose(torch.tensor(0.3))
                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-train.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
+trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
 
 
-class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
+class Zoom_Celeba(trainutils.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
 
 	def __init__(self, dataroot, label_type=None, train=True, size=128):
 
@@ -596,7 +596,7 @@ class Zoom_Celeba(train.datasets.CelebA): # TODO: generalize zoom/crop dataset t
 		img = img[..., self.cy-self.r:self.cy+self.r, self.cx-self.r:self.cx+self.r]
 
 		return (img, *other)
-train.register_dataset('z-celeba', Zoom_Celeba)
+trainutils.register_dataset('z-celeba', Zoom_Celeba)
 
 
 class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
@@ -643,22 +643,76 @@ class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
 class Asterix_Playback(Atari_Playback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, game='Asterix', **kwargs)
-train.register_dataset('asterix', Asterix_Playback)
+trainutils.register_dataset('asterix', Asterix_Playback)
 
 class Seaquest_Playback(Atari_Playback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, game='Seaquest', **kwargs)
-train.register_dataset('seaquest', Seaquest_Playback)
+trainutils.register_dataset('seaquest', Seaquest_Playback)
 
 class SpaceInvaders_Playback(Atari_Playback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, game='SpaceInvaders', **kwargs)
-train.register_dataset('spaceinv', SpaceInvaders_Playback)
+trainutils.register_dataset('spaceinv', SpaceInvaders_Playback)
 
 class Pacman_Playback(Atari_Playback):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, game='MsPacman', **kwargs)
-train.register_dataset('pacman', Pacman_Playback)
+trainutils.register_dataset('pacman', Pacman_Playback)
+
+
+class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
+	def __init__(self, new, old=None, budget=None, old2new_ratio=1, train=True,
+	             new_kwargs=None, old_kwargs=None):
+		'''
+		Train a model that was pretrained on 'old' dataset to generalize to 'new'
+		'new' should be much smaller than 'old'
+		'''
+
+		if new_kwargs is None:
+			new_kwargs = {}
+		if old_kwargs is None:
+			old_kwargs = new_kwargs.copy()
+		if old is None:
+			old = new
+			new_kwargs['negative'] = True
+
+		new = trainutils.get_dataset(new, **new_kwargs)
+
+		old = trainutils.get_dataset(old, **old_kwargs)
+
+		assert old.din == new.din and old.dout == new.dout, 'datasets are not compatible'
+
+		super().__init__(din=old.din, dout=old.dout, train=train)
+
+		if budget is not None:
+			inds = torch.randperm(len(new))[:budget]
+			new = datautils.Subset_Dataset(new, inds)
+		self.new = new
+
+		self.old = old
+
+		self.num_old = min(int(old2new_ratio * len(self.new)), len(old))
+		self.num_new = len(self.new)
+
+		self.resample_old()
+
+	def __len__(self):
+		return self.num_old + self.num_new
+
+	def resample_old(self):
+		self.old_inds = torch.randint(0, len(self.old), size=(self.num_old,))
+
+	def __getitem__(self, item):
+		if item < self.num_new:
+			return self.new[item]
+		return self.old[self.old_inds[item-self.num_new]]
+
+	def pre_epoch(self, mode, epoch):
+		if mode == 'train':
+			print('Replacing old samples')
+			self.resample_old()
+trainutils.register_dataset('transfer', Transfer_Dataset)
 
 
 # Deep Hybridization - using AdaIN
@@ -714,7 +768,7 @@ class AdaIN(fd.Model):
 			q = self.process_noise(n)
 			x = self.include_noise(x, q)
 		return x
-train.register_model('ada-in', AdaIN)
+trainutils.register_model('ada-in', AdaIN)
 
 class Norm_AdaIN(AdaIN):
 
@@ -735,7 +789,7 @@ class Norm_AdaIN(AdaIN):
 			sigma = sigma.view(*sigma.shape, *(1,) * (len(x.shape) - len(sigma.shape)))
 
 		return sigma*x + mu
-train.register_model('norm-ada-in', Norm_AdaIN)
+trainutils.register_model('norm-ada-in', Norm_AdaIN)
 
 class AdaIn_Double_Decoder(models.Double_Decoder):
 
@@ -862,21 +916,22 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 
 		return super().forward(init)
 
-train.register_model('adain-double-dec', AdaIn_Double_Decoder)
+trainutils.register_model('adain-double-dec', AdaIn_Double_Decoder)
+
 
 
 def get_data(A, mode='train'):
-	return train.default_load_data(A, mode=mode)
+	return trainutils.default_load_data(A, mode=mode)
 
 def get_model(A):
-	return train.default_create_model(A)
+	return trainutils.default_create_model(A)
 
 def get_name(A):
 	assert 'name' in A, 'Must provide a name manually'
 	return A.name
 
 def main(argv=None):
-	return train.main(argv=argv, get_data=get_data, get_model=get_model, get_name=get_name)
+	return trainutils.main(argv=argv, get_data=get_data, get_model=get_model, get_name=get_name)
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))

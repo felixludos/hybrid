@@ -1,7 +1,7 @@
 
-parents: ['wae', 'large-double', 'atari']
+#parents: ['wae', 'large-double', 'atari']
 
-#parents: ['wae', 'adain-dec', '3dshapes']
+parents: ['wae', 'adain-dec', 'noisy-3dshapes']
 
 
 #parents: ['vae', 'dspr']

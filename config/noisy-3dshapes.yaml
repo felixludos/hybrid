@@ -1,0 +1,10 @@
+parents: ['3dshapes']
+
+#name: 'test-3dshapes'
+
+dataset:
+    kwargs:
+        noise: 0.05
+
+info:
+    dataset_type: 'noisy-3dshapes'
