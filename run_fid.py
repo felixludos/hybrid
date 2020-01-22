@@ -133,7 +133,7 @@ def main(args):
 		fid['Generated'][_split[id_]] = fid_score.calculate_frechet_distance(m1,s1,m2,s2)
 		fid['Hybrid'][_split[id_]] = fid_score.calculate_frechet_distance(m1,s1,m2_h,s2_h)
 
-	with open(osp.join('results_fid.txt'),'w') as t:
+	with open(osp.join(args.save_path, 'results_fid.txt'),'w') as t:
 		for i in fid.keys():
 			t.write(i + ':\n')
 			for j in fid[i].keys():
