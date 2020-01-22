@@ -13,6 +13,8 @@ import h5py as hf
 # plt.switch_backend('Agg')
 # from sklearn.decomposition import PCA
 
+import evaluate as dis_eval
+
 import foundation as fd
 from foundation import models
 from foundation import data as datautils
@@ -95,6 +97,8 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.set_optim()
 		self.set_scheduler()
 
+		self._dis_tracker = Disentanglement_Tracker(A, self, self.stats)
+
 	def _img_size_limiter(self, imgs):
 		H, W = imgs.shape[-2:]
 
@@ -121,6 +125,8 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 			B, C, H, W = info.original.shape
 			N = min(B, 8)
+
+			_dis_results = self._dis_tracker(self.stats)
 
 			if 'reconstruction' in info:
 				viz_x, viz_rec = info.original[:N], info.reconstruction[:N]
@@ -918,6 +924,41 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 
 trainutils.register_model('adain-double-dec', AdaIn_Double_Decoder)
 
+
+
+
+class Disentanglement_Tracker(object): # Interventional Robustness
+
+	def __init__(self, A, model, stats):
+
+		self.repr_fn = None
+
+		if A.dataset.name == '3dshapes' and model.enc is not None:
+			print('Will track disentanglement score throughout training')
+			self.repr_fn = dis_eval.representation_func(model, A.device)
+
+			self.dis_dataset = dis_eval.shapes3d.Shapes3D()
+
+			self.register(stats)
+
+		pass
+
+	def register(self, stats):
+		stats.new('dtngle-irs', 'dtngle-dim')
+
+	def __call__(self, stats):
+		if self.repr_fn is not None:
+
+			result = dis_eval.eval_irs(model='', representation_function=self.repr_fn, dataset=self.dis_dataset, seed=0)
+
+			stats.update('dtngle-irs', float(result['IRS']))
+			stats.update('dtngle-dim', float(result['num_active_dims']))
+
+			return result
+
+
+
+### Required
 
 
 def get_data(A, mode='train'):

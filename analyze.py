@@ -34,6 +34,7 @@ import seaborn as sns
 
 #from foundation.util import replicate, Cloner
 
+import evaluate as dis_eval
 from hybrid import get_model, get_data
 
 
@@ -91,6 +92,8 @@ def load_fn(S, **unused):
 	if len(other) and other[0] is not None:
 		print('*** Using validation set')
 		dataset = other[0]
+
+	model.eval()
 
 	S.A = A
 	S.trainset = trainset
@@ -381,6 +384,10 @@ def viz_latent(S, **unused):
 		int_q = S.int_q
 		dis_int_q = S.dis_int_q
 
+	if dis_int_q is not None:
+		int_q = int_q.loc
+		dis_int_q = None
+
 	print(int_q.shape)
 
 	Xs = np.arange(int_q.shape[-1]) + 1
@@ -532,11 +539,33 @@ def eval_hybrid_fid(S, pbar=None, **unused):
 
 	return _run_fid(generate, pbar=pbar)
 
-def eval_disentanglement(S, **unused):
 
+def eval_disentanglement_metric(eval_fn, S, **unused):
 
+	A = S.A
+	model = S.model
 
-	pass
+	if model.enc is None:
+		return None
+
+	if 'repr_fn' not in S:
+		S.repr_fn = dis_eval.representation_func(model, A.device)
+	repr_fn = S.repr_fn
+
+	if 'dis_dataset' not in S:
+		S.dis_dataset = dis_eval.shapes3d.Shapes3D()
+	dis_dataset = S.dis_dataset
+
+	start = time.time()
+	result = eval_fn(model='', representation_function=repr_fn, dataset=dis_dataset, seed=0)
+	print('Took {:2.2f} s'.format(time.time()-start))
+
+	return result
+
+def make_dis_eval(eval_fn):
+	def _eval_metric(S, **unused):
+		return eval_disentanglement_metric(eval_fn, S, **unused)
+	return _eval_metric
 
 
 class Hybrid_Controller(train.Run_Manager):
@@ -544,6 +573,16 @@ class Hybrid_Controller(train.Run_Manager):
 		super().__init__(load_fn=load_fn, run_model_fn=run_model,
 		                 eval_fns=OrderedDict({
 
+			                 # 'MIG': make_dis_eval(dis_eval.eval_mig),
+			                 # 'DCI': make_dis_eval(dis_eval.eval_dci),
+			                 'IRS': make_dis_eval(dis_eval.eval_irs),
+
+			                 # 'SAP': make_dis_eval(dis_eval.eval_sap),
+			                 # 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+			                 # 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+
+							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
+			                 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
 		                 }),
 		                 viz_fns=OrderedDict({
 							'original': viz_originals,
