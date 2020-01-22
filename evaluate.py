@@ -15,7 +15,7 @@ from metrics import metric_beta_vae
 from metrics import modularity_explicitness
 from metrics import dci, irs, sap
 from metrics import unsupervised_metrics
-from ground_truth import dsprites
+from ground_truth import dsprites, shapes3d
 
 
 
@@ -32,7 +32,7 @@ def parse_args():
 	return parser.parse_args()
 
 def _load_model_eval(model_path, args):
-	return train.load(path=model_path, A=args, get_model=get_model)
+	return train.load(path=model_path, A=args, get_model=get_model, get_data = None)
 
 def _save_to_text(save_path, results):
 	with open(os.path.join(save_path,'results.txt'),'w') as t:
@@ -50,8 +50,12 @@ def _assert_args_and_load(model, args, dataset, representation_function):
 		args, model = _load_model_eval(model, args)
 		model.eval()
 		representation_function = representation_func(model, args['device'])
-	if dataset is None:
-		dataset = dsprites.DSprites()
+		if args.dataset.name == 'dspr':
+			dataset = dsprites.DSprites()
+		elif args.dataset.name == '3dshapes':
+			dataset = shapes3d.Shapes3D()
+		else:
+			raise Exception('Dataset not implemented yet')
 	return representation_function, dataset
 		
 
@@ -61,10 +65,11 @@ class representation_func(object):
 		self.model = model.enc
 		self.device = device
 	def __call__(self, x):
-		x = np.transpose(x, (0,3,2,1))
+		#x = np.transpose(x, (0,3,1,2))
 		"""Computes representation vector for input images."""
-		output = self.model(torch.Tensor(x).to(self.device))
-		if isinstance(self.model, models.Normal_Conv_Encoder):
+		#output = self.model(torch.Tensor(x).to(self.device))
+		output = self.model(x.to(self.device))
+		if isinstance(output, torch.Distributions.Normal):
 			output = output.loc
 		return output.detach().cpu().numpy()
 
