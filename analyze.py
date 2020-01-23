@@ -573,13 +573,13 @@ class Hybrid_Controller(train.Run_Manager):
 		super().__init__(load_fn=load_fn, run_model_fn=run_model,
 		                 eval_fns=OrderedDict({
 
-			                 # 'MIG': make_dis_eval(dis_eval.eval_mig),
-			                 # 'DCI': make_dis_eval(dis_eval.eval_dci),
+			                 'MIG': make_dis_eval(dis_eval.eval_mig),
+			                 'DCI': make_dis_eval(dis_eval.eval_dci),
 			                 'IRS': make_dis_eval(dis_eval.eval_irs),
 
-			                 # 'SAP': make_dis_eval(dis_eval.eval_sap),
-			                 # 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
-			                 # 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+			                 'SAP': make_dis_eval(dis_eval.eval_sap),
+			                 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+			                 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
 
 							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
 			                 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
