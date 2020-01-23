@@ -29,71 +29,9 @@ import pathlib
 import numpy as np
 import torch
 from scipy import linalg
-from scipy.misc import imread
 from torch.nn.functional import adaptive_avg_pool2d
 
 from . import metric_utils as utils
-
-
-def get_activations(files, model, batch_size, dims):
-    """Calculates the activations of the pool_3 layer for all images.
-    Params:
-    -- files       : List of image files paths
-    -- model       : Instance of inception model
-    -- batch_size  : Batch size of images for the model to process at once.
-                     Make sure that the number of samples is a multiple of
-                     the batch size, otherwise some samples are ignored. This
-                     behavior is retained to match the original FID score
-                     implementation.
-    -- dims        : Dimensionality of features returned by Inception
-    -- cuda        : If set to True, use GPU
-    -- verbose     : If set to True and parameter out_step is given, the number
-                     of calculated batches is reported.
-    Returns:
-    -- A numpy array of dimension (num images, dims) that contains the
-       activations of the given tensor when feeding inception with the
-       query tensor.
-    """
-    model.eval()
-
-    if batch_size > len(files):
-        print(('Warning: batch size is bigger than the data size. '
-               'Setting batch size to data size'))
-        batch_size = len(files)
-
-    
-    n_used_imgs = n_batches * batch_size
-
-    pred_arr = np.empty((n_used_imgs, dims))
-
-    i = 0
-
-    while i < len(files):
-        curr_batch_size = min(batch_size, len(files) - i)
-
-        images = np.array([imread(str(f)).astype(np.float32)
-                           for f in files[i:i+curr_batch_size]])
-
-        # Reshape to (n_images, 3, height, width)
-        images = images.transpose((0, 3, 1, 2))
-        images /= 255
-
-        batch = torch.from_numpy(images).type(torch.FloatTensor)
-        if torch.cuda.is_available():
-            batch = batch.cuda()
-
-        pred = model(batch)[0]
-
-        # If model output is not scalar, apply global spatial average pooling.
-        # This happens if you choose a dimensionality not equal 2048.
-        if pred.shape[2] != 1 or pred.shape[3] != 1:
-            pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
-
-        pred_arr[start:end] = pred.cpu().data.numpy().reshape(batch_size, -1)
-
-        i += batch_size
-
-    return pred_arr
 
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
