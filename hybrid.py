@@ -494,7 +494,7 @@ trainutils.register_model('fdwae', Dropin_FWAE)
 
 
 class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
-	def __init__(self, dataroot, train=True, labels=True, dout=(3,64,64),
+	def __init__(self, dataroot, train=True, labels=False, dout=(3,64,64),
 	             negative=False, override=False, replace=True):
 		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
 
@@ -512,6 +512,8 @@ class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
 					ridx = self.replacements(self.images, self.labels)
 				except NotImplementedError:
 					sel = torch.logical_not(sel) # keep good samples
+			elif negative:
+				print('Negating selection')
 
 			if ridx is None:
 				self.images = self.images[sel]
@@ -576,6 +578,11 @@ class RGBBall_Shapes3D(Filtered_Shapes3D):
                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
 trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
+
+class NoCap_Shapes3D(Filtered_Shapes3D):
+	def selection(self, images, labels): # all cylinder
+		return labels[:, -2].isclose(torch.tensor(3.))
+trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
 
 class Cylinder_Shapes3D(Filtered_Shapes3D):
 	def selection(self, images, labels): # all cylinder
@@ -707,6 +714,7 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 		new = trainutils.get_dataset(new, **new_kwargs)
 
 		old = trainutils.get_dataset(old, **old_kwargs)
+
 
 		assert old.din == new.din and old.dout == new.dout, 'datasets are not compatible'
 

@@ -1,6 +1,7 @@
 import sys, os, time
 import shutil
 import argparse
+import traceback
 # %load_ext autoreload
 # %autoreload 2
 # os.environ['FOUNDATION_RUN_MODE'] = 'jupyter'
@@ -57,12 +58,18 @@ def get_parser(parser=None):
 	parser.add_argument('--save-dir', type=str, default=None)
 
 
+	parser.add_argument('--include', type=str, nargs='+', default=[])
 
 	# filter
+	parser.add_argument('--remove-all', action='store_true')
 	parser.add_argument('--jobs', type=int, nargs='+', default=None)
 	parser.add_argument('--models', type=str, nargs='+', default=None)
 	parser.add_argument('--datasets', type=str, nargs='+', default=None)
 	parser.add_argument('--strs', type=str, nargs='+', default=None)
+
+
+	parser.add_argument('--skip', type=int, default=None)
+	parser.add_argument('--auto-skip', action='store_true')
 
 
 	parser.add_argument('--ckpt', type=int, default=None)
@@ -71,6 +78,29 @@ def get_parser(parser=None):
 
 	return parser
 
+
+def eval_run(run, args):
+	run.reset()
+
+	with redirect_stdout(open(os.devnull, 'w')):  # hide output from loading
+		run.load(pbar=tqdm)
+
+	run.run(pbar=tqdm)
+
+	print('----- Model is loaded.')
+
+	print('Evaluating results')
+	run.evaluate(pbar=tqdm)
+
+	update_checkpoint(run.state, 'evals', overwrite=True)
+
+	if args.save_dir is not None:
+		print('Visualizing results')
+		run.visualize(pbar=tqdm)
+
+		run.save(args.save_dir, overwrite=args.overwrite)
+
+	run.reset()  # release memory
 
 
 def main(argv=None):
@@ -100,21 +130,29 @@ def main(argv=None):
 		args.dataroot = os.environ['FOUNDATION_SAVE_DIR']
 		print('Using dataroot: {}'.format(args.dataroot))
 
+	skipable = set()
 	if args.save_dir is not None:
 		print('Will save all results to: {}'.format(args.save_dir))
 		if not os.path.isdir(args.save_dir):
 			os.makedirs(args.save_dir)
+
+		if args.auto_skip:
+			skipable.update(os.listdir(args.save_dir))
+			print('Will skip all those models already done and saved in current save_dir - found: {}'.format(len(skipable)))
+
 	else:
 		print('WARNING: no results will be saved!')
 
+	# test export a mp4
 	# frames = torch.rand(100, 64, 64, 3).mul(255).byte().numpy()
-	#
 	# vid = util.Video(frames)
-	#
 	# vid.export('test.mp4')
 
 
 	M = Hybrid_Controller(root=args.dataroot).filter_strs('!test')
+
+	args.include = set(args.include)
+	forced = [run for run in M.full_info if run.name in args.include]
 
 	if args.jobs is not None:
 		print('Filtering out all jobs except: {}'.format(', '.join(map(str,args.jobs))))
@@ -132,21 +170,29 @@ def main(argv=None):
 		print('Filtering out all except containing: {}'.format(', '.join(args.strs)))
 		M.filter_datasets(*args.strs)
 
-	print('\nRemaining jobs:')
+	if args.remove_all:
+		M.active.clear()
+		M.name2idx = None
 
-	M.show()
+	if len(forced):
+		missing = [run for run in forced if run not in M]
+		if len(missing):
+			M.extend(missing)
+			print('Included {} additional runs'.format(len(missing)))
+
+	# print('\nRemaining jobs:')
+	# M.show()
 
 	print('Loading checkpoint: {}'.format(args.ckpt if args.ckpt is not None else '[last]'))
-	M.load_configs(args.ckpt)
+	M.prep_info(args.ckpt)
 
-	print('\nCheckpoints: ')
-	for run in M.active:
-		print(run.ckpt_path)
+	# print('\nCheckpoints: ')
+	# for run in M.active:
+	# 	print(run.ckpt_path)
 
-	print('\nUnique properties')
+	print('\nRun info')
 
-	M.show_unique()
-
+	M.show('all')
 
 	runs = M.active
 	del M.full_info
@@ -154,35 +200,41 @@ def main(argv=None):
 
 	div = '-'*50
 
+	failed = []
+
 	for i, run in enumerate(runs):
 
 		print(div)
+
+		if (args.skip is not None and i < args.skip) or run.name in skipable:
+			print('Skipping {}'.format(run.name))
+			continue
+
 		print('Evaluating run {}/{}: {}'.format(i+1,len(runs), run.name))
 
-		run.reset()
+		try:
+			eval_run(run, args)
+		except Exception as e:
 
-		with redirect_stdout(open(os.devnull, 'w')): # hide output from loading
-			run.load(pbar=tqdm)
+			if isinstance(e, KeyboardInterrupt):
+				print('Interrupting during run {}/{}: {}'.format(i+1, len(runs), run.name))
+				print('Failed runs so far:')
+				print('\n'.join(failed))
+				raise e
 
-		run.run(pbar=tqdm)
+			failed.append(run.name)
+			traceback.print_exc()
 
-		print('----- Model is loaded.')
-
-		print('Evaluating results')
-		run.evaluate(pbar=tqdm)
-
-		update_checkpoint(run.state, 'evals', overwrite=True)
-
-		if args.save_dir is not None:
-			print('Visualizing results')
-			run.visualize(pbar=tqdm)
-
-			run.save(args.save_dir, overwrite=args.overwrite)
-
-		run.reset() # release memory
+		run.reset()  # release memory
 
 		print('\n')
 
+	if len(failed):
+		print('Failed runs:')
+		print('\n'.join(failed))
+		print()
+
+	print('All runs complete.')
 
 	return 0
 

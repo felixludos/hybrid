@@ -1,0 +1,7 @@
+parents: ['3dshapes']
+
+dataset:
+    name: 'nocap-3dshapes'
+
+info:
+    dataset_type: 'nocap'

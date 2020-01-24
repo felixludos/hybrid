@@ -254,7 +254,8 @@ def run_model(S, pbar=None, **unused):
 	else:
 		# bounds = -2,2
 		bounds = None
-	dlayout = rows, latent_dim // rows
+	# dlayout = rows, latent_dim // rows
+	dlayout = util.calc_tiling(latent_dim)
 	outs = []
 
 	all_diffs = []
@@ -362,6 +363,12 @@ def run_model(S, pbar=None, **unused):
 			full_q = None
 
 	S.full_q = full_q
+
+	if full_q is not None:
+		if 'results' not in S:
+			S.results = {}
+		S.results['val_Q'] = full_q
+		print('Storing validation set latent vectors')
 
 
 
