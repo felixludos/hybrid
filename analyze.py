@@ -697,18 +697,20 @@ def make_dis_eval(eval_fn):
 	return _eval_metric
 
 
+
+
 class Hybrid_Controller(train.Run_Manager):
-	def __init__(self):
-		super().__init__(load_fn=load_fn, run_model_fn=run_model,
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, load_fn=load_fn, run_model_fn=run_model,
 		                 eval_fns=OrderedDict({
 
 			                 'FID-prior': make_fid_fn('prior', fid_type='full'),
 			                 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
 			                 'FID-rec': make_fid_fn('rec', fid_type='full'),
 
+			                 'IRS': make_dis_eval(dis_eval.eval_irs),
 			                 'MIG': make_dis_eval(dis_eval.eval_mig),
 			                 'DCI': make_dis_eval(dis_eval.eval_dci),
-			                 'IRS': make_dis_eval(dis_eval.eval_irs),
 
 			                 'SAP': make_dis_eval(dis_eval.eval_sap),
 			                 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
@@ -725,6 +727,6 @@ class Hybrid_Controller(train.Run_Manager):
 							'latent': viz_latent,
 							'effects': viz_interventions,
 							'traversals': viz_traversals,
-						}))
+						}), **kwargs)
 
 

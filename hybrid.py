@@ -579,17 +579,17 @@ trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
 class Cylinder_Shapes3D(Filtered_Shapes3D):
 	def selection(self, images, labels): # all cylinder
-		return labels[:, -2].isclose(torch.tensor(1.))
+		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)))
 trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
 
 class Ball_Shapes3D(Filtered_Shapes3D):
 	def selection(self, images, labels): # all cylinder
-		return labels[:, -2].isclose(torch.tensor(2.))
+		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
 trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
 
 class CylBall_Shapes3D(Filtered_Shapes3D):
 	def selection(self, images, labels): # all cylinder
-		return labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.))
+		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.)))
 trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
 
 
