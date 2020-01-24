@@ -16,6 +16,7 @@ import gym
 import numpy as np
 # %matplotlib tk
 import matplotlib.pyplot as plt
+import pickle
 from tqdm import tqdm
 import imageio
 import seaborn as sns
@@ -36,6 +37,8 @@ import seaborn as sns
 
 import evaluate as dis_eval
 from hybrid import get_model, get_data
+
+from run_fid import compute_inception_stat, load_inception_model, compute_frechet_distance
 
 
 def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
@@ -79,6 +82,35 @@ def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
 	return fig
 
 
+def update_checkpoint(S, *keys, overwrite=False):
+
+	checkpoint = S.ckpt
+
+	if 'analysis' not in checkpoint['records']:
+		checkpoint['records']['analysis'] = {}
+
+
+
+	storage = checkpoint['records']['analysis']
+
+	updated = []
+
+	for k in keys:
+		if overwrite or k not in storage:
+			updated.append(k)
+			storage[k] = S[k]
+
+
+	print('Updated {} keys: {}'.format(len(updated), updated))
+
+	if len(updated) > 0:
+		# dest = S.ckpt_path + '-backup'
+		# shutil.copy(S.ckpt_path, dest)
+		# print('WARNING: just backed up checkpoint to: {}'.format(dest))
+		torch.save(checkpoint, S.ckpt_path)
+		print('Saved updated checkpoint to: {}'.format(S.ckpt_path))
+
+
 def load_fn(S, **unused):
 
 	cpath = S.ckpt_path
@@ -112,6 +144,14 @@ def load_fn(S, **unused):
 
 
 	S.records = records
+
+	if 'analysis' in S.records:
+		print('Found extra results from previous analysis')
+		for k,v in S.records['analysis'].items():
+			if k not in S:
+				print('Using precomputed {}'.format(k))
+				S[k] = v
+
 
 	# DataLoader
 
@@ -205,8 +245,12 @@ def run_model(S, pbar=None, **unused):
 
 	rows = 4
 	steps = 60
-	# bounds = -2,2
-	bounds = None
+
+	if 'bounds' in S:
+		bounds = S.bounds
+	else:
+		# bounds = -2,2
+		bounds = None
 	dlayout = rows, latent_dim // rows
 	outs = []
 
@@ -388,7 +432,7 @@ def viz_latent(S, **unused):
 		int_q = int_q.loc
 		dis_int_q = None
 
-	print(int_q.shape)
+	# print(int_q.shape)
 
 	Xs = np.arange(int_q.shape[-1]) + 1
 	inds = np.stack([Xs] * int_q.shape[0])
@@ -438,7 +482,8 @@ def viz_latent(S, **unused):
 		sns.violinplot(x='x', y='y', hue=hue,
 		               data=df, split=split, color=color, palette=palette,
 		               scale="count", inner=inner, gridsize=100, )
-		plt.ylim(-3, 3)
+		if 'lim_y' in S:
+			plt.ylim(-S.lim_y, S.lim_y)
 		plt.title('Distributions of Latent Dimensions')
 		plt.xlabel('Dimension')
 		plt.ylabel('Values')
@@ -496,25 +541,25 @@ def viz_traversals(S, **unused):
 
 	return anims
 
+fid_types = {
+	'train': '3dshapes_stats_fid_train.pkl',
+	'test': '3dshapes_stats_fid_test.pkl',
+	'full': '3dshapes_stats_fid.pkl',
+}
 
-def _run_fid(generate, pbar=None):
-
-
-	pass
-
-
-
-def eval_prior_fid(S, pbar=None, **unused):
+def prior_generate(S, **unused):
 
 	model = S.model
+
+	util.set_seed(0)
 
 	def generate(N):
 		with torch.no_grad():
 			return model.generate(N)
 
-	return _run_fid(generate, pbar=pbar)
+	return generate
 
-def eval_hybrid_fid(S, pbar=None, **unused):
+def hybrid_generate(S, **unused):
 
 	A = S.A
 
@@ -525,6 +570,9 @@ def eval_hybrid_fid(S, pbar=None, **unused):
 		Q = Q.loc
 
 	model = S.model
+
+
+	util.set_seed(0)
 
 	def generate(N):
 
@@ -537,7 +585,85 @@ def eval_hybrid_fid(S, pbar=None, **unused):
 
 		return gen
 
-	return _run_fid(generate, pbar=pbar)
+	return generate
+
+def rec_generate(S, **unused):
+
+	A = S.A
+
+	Q = S.full_q
+	assert Q is not None, 'no latent space'
+
+	if isinstance(Q, distrib.Distribution):
+		Q = Q.loc
+
+	model = S.model
+
+
+	util.set_seed(0)
+
+	def generate(N):
+
+		idx = torch.randperm(len(Q))[:N]
+
+		q = Q[idx].to(A.device)
+
+		with torch.no_grad():
+			gen = model.decode(q).detach()
+
+		return gen
+
+	return generate
+
+gen_types = {
+	'hybrid': hybrid_generate,
+	'prior': prior_generate,
+	'rec': rec_generate,
+}
+
+def make_fid_fn(gen_type='hybrid', fid_type='full'):
+	def _top_fn(S, pbar=None, **unused):
+
+		if 'fid_gen_stats' not in S:
+			S.fid_gen_stats = {}
+
+		if gen_type not in S.fid_gen_stats:
+
+			model = S.model
+			if gen_type != 'prior' and model.enc is None:
+				return None
+
+
+			if 'inception' not in S:
+				# print('Loading inception model')
+				# start = time.time()
+				S.inception = load_inception_model(dim=2048, device=S.A.device)
+				# print('... done ({:3.2f})'.format(time.time() - start))
+
+			inception = S.inception
+
+			generate = gen_types[gen_type](S, **unused)
+
+			S.fid_gen_stats[gen_type] = compute_inception_stat(generate, inception=inception, pbar=pbar)
+
+			update_checkpoint(S, 'fid_gen_stats', overwrite=True)
+
+
+		if 'fid_ref_stat' not in S:
+			S.fid_ref_stat = {}
+
+		if fid_type not in S.fid_ref_stat:
+			path = os.path.join(os.environ["FOUNDATION_DATA_DIR"], '3dshapes', fid_types[fid_type])
+			f = pickle.load(open(path, 'rb'))
+			S.fid_ref_stat[fid_type] = f['m'][:], f['sigma'][:]
+
+
+		stats = S.fid_gen_stats[gen_type]
+		ref_stats = S.fid_ref_stat[fid_type]
+
+		return compute_frechet_distance(*stats, *ref_stats)
+
+	return _top_fn
 
 
 def eval_disentanglement_metric(eval_fn, S, **unused):
@@ -573,13 +699,17 @@ class Hybrid_Controller(train.Run_Manager):
 		super().__init__(load_fn=load_fn, run_model_fn=run_model,
 		                 eval_fns=OrderedDict({
 
-			                 'MIG': make_dis_eval(dis_eval.eval_mig),
-			                 'DCI': make_dis_eval(dis_eval.eval_dci),
-			                 'IRS': make_dis_eval(dis_eval.eval_irs),
+			                 'FID-prior': make_fid_fn('prior', fid_type='full'),
+			                 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
+			                 'FID-rec': make_fid_fn('rec', fid_type='full'),
 
-			                 'SAP': make_dis_eval(dis_eval.eval_sap),
-			                 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
-			                 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+			                 # 'MIG': make_dis_eval(dis_eval.eval_mig),
+			                 # 'DCI': make_dis_eval(dis_eval.eval_dci),
+			                 # 'IRS': make_dis_eval(dis_eval.eval_irs),
+
+			                 # 'SAP': make_dis_eval(dis_eval.eval_sap),
+			                 # 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+			                 # 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
 
 							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
 			                 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),

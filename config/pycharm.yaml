@@ -3,7 +3,7 @@
 
 #parents: ['wae', 'adain-dec', 'noisy-3dshapes']
 
-parents: ['vae', 'double', '3dshapes']
+parents: ['fdwae', 'double', '3dshapes']
 
 #parents: ['vae', 'dspr']
 
@@ -17,9 +17,9 @@ parents: ['vae', 'double', '3dshapes']
 #
 inline: True
 #
-#dataset:
+dataset:
 #  device: cpu
-#  batch_size: 4
+  batch_size: 4
 
 ##output:
 ##  unique_tests: True

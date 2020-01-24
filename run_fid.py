@@ -13,7 +13,7 @@ import argparse
 import pickle as pkl
 from tqdm import tqdm
 
-def parse_args():
+def parse_args(argv=None):
 	parser = argparse.ArgumentParser(description='Evaluate FID')
 	parser.add_argument('--model', type=str, required = True, metavar='M',
                     help='path to saved model files to be evaluated')
@@ -28,7 +28,7 @@ def parse_args():
 	parser.add_argument('--save-stat', action = 'store_true', help = 'Genrerate and save statistics')
 	parser.add_argument('--n_samples', type=int, default=50000, metavar='NS',
                     help='Number of samples to evaluate/train statistics on')
-	return parser.parse_args()
+	return parser.parse_args(argv)
 
 def get_stats(model, model_inception, batch_size, n_samples, dataset, mode = True, hybrid = False, stat_ref = False, save_stats = None):
 	
@@ -75,6 +75,66 @@ def get_stats(model, model_inception, batch_size, n_samples, dataset, mode = Tru
 		with open(save_stats,'wb') as b:
 			pkl.dump(out, b)
 	return m, s
+
+def load_inception_model(dim=2048, device='cuda'):
+
+	if not torch.cuda.is_available(): # cuda not found
+		print('WARNING: cuda not found')
+		device = 'cpu'
+	if device == 'cpu':
+		print('WARNING: running on cpu - this will take a long time!')
+
+	block_idx = utils.InceptionV3.BLOCK_INDEX_BY_DIM[dim]
+
+	return utils.InceptionV3([block_idx]).to(device).eval()
+
+def compute_inception_stat(generate, inception=None, batch_size=50, n_samples=50000,
+                     dim=2048, device='cuda', pbar=None):
+	"""
+
+	:param generate: callable: input N (int) -> (N, 3, H, W) images (as pytorch tensor)
+	:param inception: inception model (if None will automatically load)
+	:param batch_size: int
+	:param n_samples: int
+	:param pbar: tqdm-like (optional)
+	:param dim: dimension for inception model (only used if inception is not provided)
+	:param device: device for inception model (only used if inception is not provided)
+	"""
+
+	pred_arr = np.empty((n_samples, 2048)) # TODO: refactor to keep incremental statistics to avoid storing the full set
+
+	if inception is None:
+		inception = load_inception_model(dim=dim, device=device)
+
+	if pbar is not None:
+		pbar = pbar(total=n_samples)
+
+	j = 0
+	while j < n_samples:
+		N = min(batch_size, n_samples - j)
+
+		samples = generate(N)
+		with torch.no_grad():
+			pred = inception(samples)[0]
+
+		if pred.shape[2] != 1 or pred.shape[3] != 1:
+			pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
+
+		pred_arr[j:j+N] = pred.cpu().numpy().reshape(N, -1)
+
+		j += N
+		if pbar is not None:
+			pbar.update(N)
+
+
+	m = np.mean(pred_arr, axis=0)
+	s = np.cov(pred_arr, rowvar=False)
+
+	return m, s
+
+def compute_frechet_distance(m1, s1, m2, s2):
+	return fid_score.calculate_frechet_distance(m1,s1,m2,s2)
+
 
 def main(args):
 	batch_size = args.batch_size
@@ -138,6 +198,7 @@ def main(args):
 			t.write(i + ':\n')
 			for j in fid[i].keys():
 				t.write('\t'+ j + ':\t' + str(fid[i][j])+'\n')
+
 
 if __name__ == '__main__':
 	args_ = parse_args()
