@@ -543,14 +543,14 @@ class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
 
 # ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape', 'orientation']
 
-class Redball_Shapes3D(Filtered_Shapes3D):
+class RBall_Shapes3D(Filtered_Shapes3D):
 
 	def selection(self, images, labels): # all non-red balls
 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
 
 	def replacements(self, images, labels): # any red balls
 		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
-trainutils.register_dataset('redball-3dshapes', Redball_Shapes3D)
+trainutils.register_dataset('redball-3dshapes', RBall_Shapes3D)
 
 class RBBall_Shapes3D(Filtered_Shapes3D):
 
@@ -576,6 +576,27 @@ class RGBBall_Shapes3D(Filtered_Shapes3D):
                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
 trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
+
+class Cylinder_Shapes3D(Filtered_Shapes3D):
+	def selection(self, images, labels): # all cylinder
+		return labels[:, -2].isclose(torch.tensor(1.))
+trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
+
+class Ball_Shapes3D(Filtered_Shapes3D):
+	def selection(self, images, labels): # all cylinder
+		return labels[:, -2].isclose(torch.tensor(2.))
+trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
+
+class CylBall_Shapes3D(Filtered_Shapes3D):
+	def selection(self, images, labels): # all cylinder
+		return labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.))
+trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
+
+
+# class Cylinder_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all cylinder
+# 		return labels[:, -2].isclose(torch.tensor(1.))
+# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
 
 
 class Zoom_Celeba(trainutils.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset

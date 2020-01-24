@@ -84,6 +84,9 @@ def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
 
 def update_checkpoint(S, *keys, overwrite=False):
 
+	if 'ckpt' not in S:
+		return None
+
 	checkpoint = S.ckpt
 
 	if 'analysis' not in checkpoint['records']:
@@ -682,9 +685,9 @@ def eval_disentanglement_metric(eval_fn, S, **unused):
 		S.dis_dataset = dis_eval.shapes3d.Shapes3D()
 	dis_dataset = S.dis_dataset
 
-	start = time.time()
+	# start = time.time()
 	result = eval_fn(model='', representation_function=repr_fn, dataset=dis_dataset, seed=0)
-	print('Took {:2.2f} s'.format(time.time()-start))
+	# print('Took {:2.2f} s'.format(time.time()-start))
 
 	return result
 
@@ -703,13 +706,13 @@ class Hybrid_Controller(train.Run_Manager):
 			                 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
 			                 'FID-rec': make_fid_fn('rec', fid_type='full'),
 
-			                 # 'MIG': make_dis_eval(dis_eval.eval_mig),
-			                 # 'DCI': make_dis_eval(dis_eval.eval_dci),
-			                 # 'IRS': make_dis_eval(dis_eval.eval_irs),
+			                 'MIG': make_dis_eval(dis_eval.eval_mig),
+			                 'DCI': make_dis_eval(dis_eval.eval_dci),
+			                 'IRS': make_dis_eval(dis_eval.eval_irs),
 
-			                 # 'SAP': make_dis_eval(dis_eval.eval_sap),
-			                 # 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
-			                 # 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+			                 'SAP': make_dis_eval(dis_eval.eval_sap),
+			                 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+			                 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
 
 							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
 			                 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
