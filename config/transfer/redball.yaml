@@ -1,9 +1,0 @@
-parents: ['3dshapes']
-
-#name: 'test-3dshapes'
-
-dataset:
-    name: 'redball-3dshapes'
-
-info:
-    dataset_type: 'redball'

@@ -1,0 +1,17 @@
+parents: ['3dshapes']
+
+#name: 'test-3dshapes'
+
+training:
+    epochs: 100
+
+dataset:
+    name: 'byfactor'
+
+    factor: shape
+
+    counts: [0, 0, -1, 0]
+
+
+info:
+    dataset_type: '3dshapes'

@@ -1,0 +1,21 @@
+parents: ['transfer/byfactor']
+
+output:
+    save_freq: 4
+
+training:
+    epochs: 400
+
+dataset:
+    name: 'byfactor'
+
+    kwargs:
+        factor: shape
+
+        counts: [0, 0, -1, 0]
+
+model:
+    scheduler_patience: 10
+
+info:
+    dataset_type: 'cyl'

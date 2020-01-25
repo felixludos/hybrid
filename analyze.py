@@ -117,7 +117,9 @@ def update_checkpoint(S, *keys, overwrite=False):
 def load_fn(S, **unused):
 
 	cpath = S.ckpt_path
-	A = S.A if 'A' in S else None
+	A = S.A if 'A' in S else train.get_config()
+
+	A.dataset.device = 'cpu'
 
 	A, (dataset, *other), model, ckpt = train.load(path=cpath, A=A, get_model=get_model, get_data=get_data,
 	                                               return_args=True, return_ckpt=True)
@@ -350,6 +352,9 @@ def run_model(S, pbar=None, **unused):
 				if isinstance(q, distrib.Distribution):
 					q = torch.stack([q.loc, q.scale], 1)
 				full_q.append(q.cpu())
+
+		if pbar is not None:
+			valloader.close()
 
 		if len(full_q):
 			full_q = torch.cat(full_q)

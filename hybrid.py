@@ -24,9 +24,9 @@ from foundation import train as trainutils
 
 MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
-trainutils.register_config_dir(os.path.join(MY_PATH, 'config'))
+trainutils.register_config_dir(os.path.join(MY_PATH, 'config'), recursive=True)
 
-trainutils.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
+# trainutils.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
 
 class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Schedulable, fd.Trainable_Model):
 
@@ -545,6 +545,78 @@ class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
 
 # ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape', 'orientation']
 
+class ByFactor(trainutils.datasets.Shapes3D):
+	def __init__(self, dataroot, train=True, labels=False, dout=(3,64,64),
+	             factor='shape', vals=None, counts=None, seeds=None, det=True):
+		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
+
+		self.labeled = labels
+
+		if not isinstance(factor, int):
+			factor_name = factor
+			factor_idx = self.factor_order.index(factor)
+		else:
+			factor_name = self.factor_order[factor]
+			factor_idx = factor
+
+		factor_size = self.factor_num_values[factor_name]
+
+		if vals is None:
+			vals = np.arange(factor_size)
+
+		if counts is None:
+			counts = [None]*factor_size
+			print('WARNING: dataset is not filtering out any samples')
+		else:
+			counts = [(cnt if cnt is None or cnt >= 0 else None) for cnt in counts]
+
+		if seeds is None:
+			seeds = np.arange(factor_size) if det else [None]*factor_size
+
+		assert len(vals) == factor_size, 'invalid len: {} vs {}'.format(factor_size, len(vals))
+		assert len(counts) == factor_size, 'invalid len: {} vs {}'.format(factor_size, len(counts))
+		assert len(seeds) == factor_size, 'invalid len: {} vs {}'.format(factor_size, len(seeds))
+
+		self.factor_name = factor_name
+		self.factor_idx = factor_idx
+		self.factor_size = factor_size
+
+		sel = self.subsample(vals, counts, seeds)
+
+		print('Filtering out {}/{} samples'.format(len(self.images)-len(sel), len(self.images)))
+
+		self.images = self.images[sel]
+		self.labels = self.labels[sel]
+
+		if not self.labeled:
+			del self.labels
+
+	def _filter(self, samples, val, num=None, seed=None):
+
+		sel = torch.isclose(samples, torch.tensor(val).float())
+
+		indices = torch.arange(len(samples))[sel]
+
+		if num is not None and num < len(indices):
+			num = min(len(indices), num)
+			indices = util.subset(indices, num, seed)
+
+		return indices
+
+	def subsample(self, vals, counts, seeds):
+
+		samples = self.labels[:,self.factor_idx]
+
+		inds = []
+		for val, cnt, seed in zip(vals, counts, seeds):
+			inds.append(self._filter(samples, val, num=cnt, seed=seed))
+
+
+		inds = np.concatenate(inds)
+
+		return inds
+trainutils.register_dataset('byfactor', ByFactor)
+
 class RBall_Shapes3D(Filtered_Shapes3D):
 
 	def selection(self, images, labels): # all non-red balls
@@ -580,24 +652,29 @@ trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
 
 class NoCap_Shapes3D(Filtered_Shapes3D):
-	def selection(self, images, labels): # all cylinder
+	def selection(self, images, labels): # all capsule
 		return labels[:, -2].isclose(torch.tensor(3.))
 trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
 
-class Cylinder_Shapes3D(Filtered_Shapes3D):
-	def selection(self, images, labels): # all cylinder
-		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)))
-trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
-
-class Ball_Shapes3D(Filtered_Shapes3D):
-	def selection(self, images, labels): # all cylinder
-		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
-trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
-
-class CylBall_Shapes3D(Filtered_Shapes3D):
-	def selection(self, images, labels): # all cylinder
-		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.)))
-trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
+# class Cylinder_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-cylinder
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)))
+# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
+#
+# class Ball_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-ball
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
+#
+# class Cube_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-ball
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
+#
+# class CylBall_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-(ball or cyl)
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
 
 
 # class Cylinder_Shapes3D(Filtered_Shapes3D):
@@ -954,8 +1031,6 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 trainutils.register_model('adain-double-dec', AdaIn_Double_Decoder)
 
 
-
-
 class Disentanglement_Tracker(object): # Interventional Robustness
 
 	def __init__(self, A, model, stats):
@@ -984,7 +1059,6 @@ class Disentanglement_Tracker(object): # Interventional Robustness
 			stats.update('dtngle-dim', float(result['num_active_dims']))
 
 			return result
-
 
 
 ### Required

@@ -3,13 +3,15 @@
 
 #parents: ['wae', 'adain-dec', 'noisy-3dshapes']
 
-parents: ['fdwae', 'double', '3dshapes']
+parents: ['wae', 'double', 'transfer/cyl']
 
 #parents: ['vae', 'dspr']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
 #game: pacman
+
+device: cpu
 
 #
 #

@@ -126,6 +126,9 @@ def compute_inception_stat(generate, inception=None, batch_size=50, n_samples=50
 		if pbar is not None:
 			pbar.update(N)
 
+	if pbar is not None:
+		pbar.close()
+
 
 	m = np.mean(pred_arr, axis=0)
 	s = np.cov(pred_arr, rowvar=False)
