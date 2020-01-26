@@ -8,9 +8,10 @@ training:
 dataset:
     name: 'byfactor'
 
-    factor: shape
-
-    counts: [0, 0, -1, 0]
+#    kwargs:
+#        factor: shape
+#
+#        counts: [0, 0, -1, 0]
 
 
 info:

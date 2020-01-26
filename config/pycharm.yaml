@@ -3,15 +3,17 @@
 
 #parents: ['wae', 'adain-dec', 'noisy-3dshapes']
 
-parents: ['wae', 'double', 'transfer/cyl']
+parents: ['transfer/cyl-ball']
 
 #parents: ['vae', 'dspr']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
+load: cyl-wae_0178-6017981-00_200125-221552
+
 #game: pacman
 
-device: cpu
+#device: cpu
 
 #
 #
@@ -19,9 +21,9 @@ device: cpu
 #
 inline: True
 #
-dataset:
+#dataset:
 #  device: cpu
-  batch_size: 4
+#  batch_size: 4
 
 ##output:
 ##  unique_tests: True
@@ -29,8 +31,8 @@ dataset:
 #training:
 #  max_iter: 100
 #
-model:
-  latent_reg_wt: 4
+#model:
+#  latent_reg_wt: 4
 #  _type: wpp
 #
 ##  gan_wt: 1

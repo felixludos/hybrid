@@ -125,37 +125,50 @@ def load_fn(S, **unused):
 	                                               return_args=True, return_ckpt=True)
 
 
-	trainset = dataset
-	if len(other) and other[0] is not None:
-		print('*** Using validation set')
-		dataset = other[0]
+	if 'trainset' not in S:
+		S.trainset = dataset
+	if 'valset' not in S:
+		S.valset = None
+
+		if len(other) and other[0] is not None:
+			print('*** Using validation set')
+			S.valset = other[0]
+			dataset = S.valset
 
 	model.eval()
 
+	if 'dataset' not in S:
+		S.dataset = dataset
+	else:
+		print('Found an existing dataset, len={}, using that instead'.format(len(S.dataset)))
+
 	S.A = A
-	S.trainset = trainset
-	S.dataset = dataset
 	S.other = other
 	S.model = model
 	S.ckpt = ckpt
 
 	records = ckpt['records']
 	print('Trained on {:2.2f} M samples'.format(records['total_samples']['train'] / 1e6))
-	if len(other) and other[0] is not None:
-		dataset = other[0]
-		print('Using validation set')
-	else:
-		print('Using training set')
+	# if len(other) and other[0] is not None:
+	# 	dataset = other[0]
+	# 	print('Using validation set')
+	# else:
+	# 	print('Using training set')
 
 
 	S.records = records
 
 	if 'analysis' in S.records:
 		print('Found extra results from previous analysis')
-		for k,v in S.records['analysis'].items():
-			if k not in S:
-				print('Using precomputed {}'.format(k))
-				S[k] = v
+
+		if 'skip_precomputed' not in A or not A.skip_precomputed:
+
+			for k,v in S.records['analysis'].items():
+				if k not in S:
+					print('Using precomputed {}'.format(k))
+					S[k] = v
+		else:
+			print('Skipping all precomputed values')
 
 
 	# DataLoader
@@ -320,29 +333,30 @@ def run_model(S, pbar=None, **unused):
 	S.all_diffs = all_diffs
 	S.saved_walks = saved_walks
 
-	other = S.other
+	dataset = S.dataset
 
 	full_q = None
 
-	if not len(other) or other[0] is None:
-		print('No validation set found')
+	if model.enc is not None:
 
-	elif model.enc is not None:
+		N = min(1000, len(dataset))
 
-		valset = other[0]
+		print('Using {} samples'.format(N))
 
-		print('valset: {}'.format(len(valset)))
+		assert (N//4)*4 == N, 'invalid num: {}'.format(N)
 
-		valloader = train.get_loaders(valset, batch_size=128, num_workers=A.num_workers,
-		                                        shuffle=False, drop_last=False, )
+		loader = train.get_loaders(dataset, batch_size=N//4, num_workers=A.num_workers,
+		                                        shuffle=True, drop_last=False, )
+
+		util.set_seed(0)
 
 		if pbar is not None:
-			valloader = pbar(valloader, total=len(valloader))
-			valloader.set_description('Validation set')
+			loader = pbar(loader, total=len(loader))
+			loader.set_description('Collecting latent vectors')
 
 		full_q = []
 
-		for batch in valloader:
+		for batch in loader:
 			batch = util.to(batch, A.device)
 			X, = batch
 
@@ -354,12 +368,12 @@ def run_model(S, pbar=None, **unused):
 				full_q.append(q.cpu())
 
 		if pbar is not None:
-			valloader.close()
+			loader.close()
 
 		if len(full_q):
 			full_q = torch.cat(full_q)
 
-			print(full_q.shape)
+			# print(full_q.shape)
 
 			if len(full_q.shape) > 2:
 				full_q = distrib.Normal(loc=full_q[:,0], scale=full_q[:,1])
@@ -373,7 +387,7 @@ def run_model(S, pbar=None, **unused):
 		if 'results' not in S:
 			S.results = {}
 		S.results['val_Q'] = full_q
-		print('Storing validation set latent vectors')
+		print('Storing {} latent vectors'.format(len(full_q)))
 
 
 

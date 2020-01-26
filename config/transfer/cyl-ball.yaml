@@ -1,0 +1,37 @@
+#parents: ['transfer/byfactor']
+
+output:
+    save_freq: 10
+
+training:
+    epochs: 600
+
+dataset:
+    name: 'transfer'
+
+#    repeat_until_batches: 2000
+
+    kwargs:
+
+        count: '_x_'
+        factor: '_x_'
+
+        budget: 256
+        old2new_ratio: 1
+
+        new: byfactor
+        new_kwargs:
+            counts: [0, 100, 0, 0]
+            labels: False
+
+        old: byfactor
+        old_kwargs:
+            counts: [0, 0, -1, 0]
+            labels: False
+
+model:
+    scheduler_patience: 10
+    lr: 2.e-4
+
+info:
+    dataset_type: 'cylball'

@@ -570,6 +570,7 @@ class ByFactor(trainutils.datasets.Shapes3D):
 		else:
 			counts = [(cnt if cnt is None or cnt >= 0 else None) for cnt in counts]
 
+
 		if seeds is None:
 			seeds = np.arange(factor_size) if det else [None]*factor_size
 
@@ -773,8 +774,8 @@ trainutils.register_dataset('pacman', Pacman_Playback)
 
 
 class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
-	def __init__(self, new, old=None, budget=None, old2new_ratio=1, train=True,
-	             new_kwargs=None, old_kwargs=None):
+	def __init__(self, dataroot, new, old=None, budget=None, old2new_ratio=1, train=True,
+	             new_kwargs=None, old_kwargs=None, **unused):
 		'''
 		Train a model that was pretrained on 'old' dataset to generalize to 'new'
 		'new' should be much smaller than 'old'
@@ -788,9 +789,9 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 			old = new
 			new_kwargs['negative'] = True
 
-		new = trainutils.get_dataset(new, **new_kwargs)
+		new = trainutils.get_dataset(new, dataroot=dataroot, **new_kwargs)
 
-		old = trainutils.get_dataset(old, **old_kwargs)
+		old = trainutils.get_dataset(old, dataroot=dataroot, **old_kwargs)
 
 
 		assert old.din == new.din and old.dout == new.dout, 'datasets are not compatible'
