@@ -1,0 +1,11 @@
+parents: ['n/3dshapes']
+
+dataset:
+    name: 'byfactor'
+
+    factor: shape
+
+    counts: [-1, -1, 0, 0] # [box, cyl, ball, cap]
+
+info:
+    dataset_type: '3dSshape2'

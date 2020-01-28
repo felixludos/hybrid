@@ -1,0 +1,14 @@
+parents: ['n/fwae', 'n/vae']
+
+model:
+    _type: 'fvpp'
+
+#optim:
+#  lr: 2.e-4
+#  beta1: 0.9
+#  beta2: 0.999
+
+
+info:
+    model_type: 'fvae'
+

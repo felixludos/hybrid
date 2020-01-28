@@ -1,0 +1,12 @@
+parents: ['n/basics']
+
+model:
+    _type: 'fwpp'
+
+    gan_wt: 0
+
+    reg_prior: 0.5
+
+
+info:
+    model_type: 'fwae'

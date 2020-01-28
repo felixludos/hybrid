@@ -1,0 +1,25 @@
+parents: ['n/double']
+
+#name: 'test-large'
+
+model:
+
+    generator:
+        _type: 'adain-double-dec'
+
+        splits: 2
+        adain_latent_dim: 8
+
+        adain:
+            _type: 'norm-ada-in'
+            net:
+                _mod: 'normal'
+                _type: 'mlp'
+                din: '<>ada_noise'
+                dout: '<>features'
+                hidden_dims: [64]
+                output_nonlin: 'None'
+                latent_dim: '<>dout' # for the 'normal' mod
+
+info:
+    arch: 'adain'

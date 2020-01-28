@@ -1,0 +1,10 @@
+parents: ['n/dvae', 'n/fvae' ]
+
+#name: 'fdvae'
+
+model:
+    _type: 'fdvae'
+
+info:
+    model_type: 'fdvae'
+

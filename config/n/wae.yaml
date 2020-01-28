@@ -1,0 +1,9 @@
+parents: ['n/basics']
+
+#name: 'wae'
+
+model:
+    gan_wt: 0
+
+info:
+    model_type: 'wae'

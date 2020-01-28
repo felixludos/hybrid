@@ -1,0 +1,21 @@
+parents: ['n/basics']
+
+model:
+    _type: 'vpp'
+
+    gan_wt: 0
+
+    latent_reg_wt: 1
+
+    encoder:
+#        _type: 'normal-conv'
+        _mod: 'normal'
+
+#optim:
+#  lr: 2.e-4
+#  beta1: 0.9
+#  beta2: 0.999
+
+info:
+    model_type: 'vae'
+

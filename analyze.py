@@ -122,6 +122,7 @@ def load_fn(S, **unused):
 	A.dataset.device = 'cpu'
 
 	A, (dataset, *other), model, ckpt = train.load(path=cpath, A=A, get_model=get_model, get_data=get_data,
+	                                               update_config=True,
 	                                               return_args=True, return_ckpt=True)
 
 

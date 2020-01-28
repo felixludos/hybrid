@@ -558,7 +558,13 @@ class ByFactor(trn.datasets.Shapes3D):
 
 		det = A.pull('det', True)
 
+		labeled = A.pull('labeled', False)
+
+		A.labeled = True
+
 		super().__init__(A)
+
+		self.labeled = labeled
 
 		if not isinstance(factor, int):
 			factor_name = factor
@@ -599,6 +605,7 @@ class ByFactor(trn.datasets.Shapes3D):
 
 		if not self.labeled:
 			del self.labels
+			self.dout = self.din
 
 	def _filter(self, samples, val, num=None, seed=None):
 
@@ -768,6 +775,8 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 		Train a model that was pretrained on 'old' dataset to generalize to 'new'
 		'new' should be much smaller than 'old'
 		'''
+
+		assert False, 'pre_epoch not setup for datasets yet'
 
 		if new is None:
 			new = A.pull('transfer')
@@ -1014,6 +1023,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 class Disentanglement_Tracker(object): # Interventional Robustness
 
 	def __init__(self, A, model, stats):
+		# print('\n\n\n\n\n\n\nWARNING: not using tracker\n\n\n\n')
 
 		self.repr_fn = None
 

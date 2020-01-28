@@ -1,7 +1,8 @@
 
 #parents: ['wae', 'large-double', 'atari']
 
-parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
+#parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
+parents: ['n/vae', 'n/double', 'n/t/box-cyl-ball']
 
 #parents: ['transfer/cyl-ball']
 
@@ -16,7 +17,6 @@ parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
 #device: cpu
 
 #legacy: True
-
 #
 #
 ##name: 'test-pycharm'
@@ -27,11 +27,15 @@ dataset:
   device: cpu
 #  batch_size: 4
 
-##output:
-##  unique_tests: True
+output:
+  print_freq: 20
+#  unique_tests: True
+  save_freq: 60
 #
 training:
-  max_iter: 20
+  val_freq: 60
+
+  time_limit: 0.01
 #
 #model:
 #  latent_reg_wt: 4

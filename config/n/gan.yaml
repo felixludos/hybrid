@@ -1,0 +1,13 @@
+parents: ['n/basics']
+
+dataset:
+    val_split: '_x_'
+
+model:
+    _type: 'wgan'
+
+    gan_wt: 1
+    scheduler_type: '_x_'
+
+info:
+    model_type: 'wgan'

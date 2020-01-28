@@ -1,0 +1,48 @@
+parents: ['n/basics']
+
+model:
+
+    channels: [64, 64, 64, 128, 128]
+    factors: 2
+
+    down_type: 'max'
+    up_type: 'nearest'
+    norm_type: 'instance'
+
+    nonlin: 'elu'
+
+    scheduler_type: 'plateau'
+    scheduler_decay: .2
+#    scheduler_patience: 10
+
+    encoder:
+        _type: 'double-enc'
+
+        tail:
+            _type: 'mlp'
+            hidden_dims: [256, 128]
+
+
+    generator:
+        _type: 'double-dec'
+
+        channels: [128, 128, 64, 64, 64]
+
+        output_nonlin: 'sigmoid'
+
+        head:
+            _type: 'mlp'
+            hidden_dims: [128, 128, 128, 256]
+
+    discriminator:
+        _type: 'double-enc'
+
+        dout: 1
+
+        tail:
+            _type: 'mlp'
+            hidden_dims: [256, 128, 64]
+
+
+info:
+    arch: double

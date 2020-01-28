@@ -15,4 +15,4 @@ dataset:
 
 
 info:
-    dataset_type: '3dshapes'
+    dataset_type: '3dshapes-factor'
