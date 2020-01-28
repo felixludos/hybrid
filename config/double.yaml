@@ -19,7 +19,7 @@ model:
         _type: 'double-enc'
 
         tail:
-            _type: 'nn'
+            _type: 'mlp'
             hidden_dims: [256, 128]
 
 
@@ -31,7 +31,7 @@ model:
         output_nonlin: 'sigmoid'
 
         head:
-            _type: 'nn'
+            _type: 'mlp'
             hidden_dims: [128, 128, 128, 256]
 
     discriminator:
@@ -40,6 +40,6 @@ model:
         dout: 1
 
         tail:
-            _type: 'nn'
+            _type: 'mlp'
             hidden_dims: [256, 128, 64]
 

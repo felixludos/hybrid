@@ -1,19 +1,21 @@
 
 #parents: ['wae', 'large-double', 'atari']
 
-#parents: ['wae', 'adain-dec', 'noisy-3dshapes']
+parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
 
-parents: ['transfer/cyl-ball']
+#parents: ['transfer/cyl-ball']
 
-#parents: ['vae', 'dspr']
+#parents: ['vae', 'double', '3dshapes']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
-load: cyl-wae_0178-6017981-00_200125-221552
+#load: cyl-wae_0178-6017981-00_200125-221552
 
 #game: pacman
 
 #device: cpu
+
+#legacy: True
 
 #
 #
@@ -21,15 +23,15 @@ load: cyl-wae_0178-6017981-00_200125-221552
 #
 inline: True
 #
-#dataset:
-#  device: cpu
+dataset:
+  device: cpu
 #  batch_size: 4
 
 ##output:
 ##  unique_tests: True
 #
-#training:
-#  max_iter: 100
+training:
+  max_iter: 20
 #
 #model:
 #  latent_reg_wt: 4

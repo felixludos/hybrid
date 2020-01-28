@@ -14,7 +14,7 @@ model:
             _type: 'norm-ada-in'
             net:
                 _mod: 'normal'
-                _type: 'nn'
+                _type: 'mlp'
                 din: '<>ada_noise'
                 dout: '<>features'
                 hidden_dims: [64]

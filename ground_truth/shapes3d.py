@@ -7,8 +7,8 @@ from . import utils
 import numpy as np
 import PIL
 from six.moves import range
+from foundation import train as trn
 from foundation.train import datasets
-
 
 class Shapes3D(datasets.Shapes3D, ground_truth_data.GroundTruthData):
 	"""DSprites dataset.
@@ -30,7 +30,14 @@ class Shapes3D(datasets.Shapes3D, ground_truth_data.GroundTruthData):
 		 	latent_factor_indices = list(range(6))
 		self.latent_factor_indices = latent_factor_indices
 		self.data_shape = [64, 64, 3]
-		super().__init__(dataroot = data_file, train = None, labels = True)
+
+		A = trn.get_config()
+		A.dataroot = data_file
+		A.train = None
+		A.labeled = True
+		super().__init__(A)
+
+		# super().__init__(dataroot = data_file, train = None, labels = True)
 		self.factor_sizes = [10, 10, 10, 8, 4, 15]
 		self.latent_factor_indices = list(range(6))
 		self.num_total_factors = self.labels.shape[1]

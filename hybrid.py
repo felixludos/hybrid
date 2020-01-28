@@ -20,14 +20,13 @@ from foundation import models
 from foundation import data as datautils
 from foundation.models import unsup
 from foundation import util
-from foundation import train as trainutils
+from foundation import train as trn
 
 MY_PATH = os.path.dirname(os.path.abspath(__file__))
 
-trainutils.register_config_dir(os.path.join(MY_PATH, 'config'), recursive=True)
+trn.register_config_dir(os.path.join(MY_PATH, 'config'), recursive=True)
 
-# trainutils.register_config('hybrid', os.path.join(MY_PATH, 'config', 'basics.yaml'))
-
+@fd.Component('wpp')
 class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable, fd.Visualizable, fd.Schedulable, fd.Trainable_Model):
 
 	def __init__(self, A):
@@ -329,16 +328,15 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 	def generate(self, N=1):
 		q = self.sample_prior(N)
 		return self.decode(q)
-trainutils.register_model('wpp', Wasserstein_PP)
 
+@fd.Component('wgan')
 class WGAN(Wasserstein_PP):
 	def __init__(self, A):
 		super().__init__(A)
 
 		assert self.gan_wt == 1, 'gan_wt should be 1: {}'.format(self.gan_wt)
-trainutils.register_model('wgan', WGAN)
 
-
+@fd.Component('vpp')
 class WPP_VAE(Wasserstein_PP):
 	def decode(self, q):
 		if isinstance(q, distrib.Distribution):
@@ -352,7 +350,7 @@ class WPP_VAE(Wasserstein_PP):
 
 	def regularize(self, q):
 		return util.standard_kl(q).sum().div(q.loc.size(0))
-trainutils.register_model('vpp', WPP_VAE)
+
 
 
 class WPP_RAMMC(WPP_VAE):
@@ -377,6 +375,7 @@ class WPP_RAMMC(WPP_VAE):
 
 		raise NotImplementedError
 
+@fd.Component('dwae')
 class Dropin_WPP(Wasserstein_PP):
 	def __init__(self, A):
 
@@ -401,14 +400,14 @@ class Dropin_WPP(Wasserstein_PP):
 		
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q*sel + hyb*(1-sel)
-trainutils.register_model('dwae', Dropin_WPP)
 
+@fd.Component('dout-wae')
 class Dropout_WPP(Dropin_WPP):
 	def hybridize(self, q):
 		sel = (torch.rand_like(q) - self.probs).gt(0).float()
 		return q * sel
-trainutils.register_model('dout-wae', Dropout_WPP)
 
+@fd.Component('fwpp')
 class Factor_WPP(Wasserstein_PP):
 	def __init__(self, A):
 
@@ -474,26 +473,25 @@ class Factor_WPP(Wasserstein_PP):
 			reg = (1-self.prior_wt)*reg + self.prior_wt*reg_prior
 			
 		return reg
-trainutils.register_model('fwpp', Factor_WPP)
 
+@fd.Component('fvpp')
 class FactorVAE(Factor_WPP, WPP_VAE):
 	pass
-trainutils.register_model('fvpp', FactorVAE)
 
+@fd.Component('dvae')
 class DropinVAE(WPP_VAE, Dropin_WPP):
 	pass
-trainutils.register_model('dvae', DropinVAE)
 
+@fd.Component('fdvae')
 class Dropin_FVAE(FactorVAE, Dropin_WPP):
 	pass
-trainutils.register_model('fdvae', Dropin_FVAE)
 
+@fd.Component('fdwae')
 class Dropin_FWAE(Dropin_WPP, Factor_WPP):
 	pass
-trainutils.register_model('fdwae', Dropin_FWAE)
 
 
-class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
+class Filtered_Shapes3D(trn.datasets.Shapes3D):
 	def __init__(self, dataroot, train=True, labels=False, dout=(3,64,64),
 	             negative=False, override=False, replace=True):
 		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
@@ -545,12 +543,22 @@ class Filtered_Shapes3D(trainutils.datasets.Shapes3D):
 
 # ['floor_hue', 'wall_hue', 'object_hue', 'scale', 'shape', 'orientation']
 
-class ByFactor(trainutils.datasets.Shapes3D):
-	def __init__(self, dataroot, train=True, labels=False, dout=(3,64,64),
-	             factor='shape', vals=None, counts=None, seeds=None, det=True):
-		super().__init__(dataroot=dataroot, train=train, labels=True, dout=dout)
+@trn.Dataset('byfactor')
+class ByFactor(trn.datasets.Shapes3D):
+	# def __init__(self, dataroot, train=True, labels=False, dout=(3,64,64),
+	#              factor='shape', vals=None, counts=None, seeds=None, det=True):
 
-		self.labeled = labels
+	def __init__(self, A):
+
+		factor = A.pull('factor', 'shape')
+		vals = A.pull('vals', None)
+
+		counts = A.pull('counts', None)
+		seeds = A.pull('seeds', None)
+
+		det = A.pull('det', True)
+
+		super().__init__(A)
 
 		if not isinstance(factor, int):
 			factor_name = factor
@@ -616,46 +624,47 @@ class ByFactor(trainutils.datasets.Shapes3D):
 		inds = np.concatenate(inds)
 
 		return inds
-trainutils.register_dataset('byfactor', ByFactor)
 
-class RBall_Shapes3D(Filtered_Shapes3D):
+# trainutils.register_dataset('byfactor', ByFactor)
 
-	def selection(self, images, labels): # all non-red balls
-		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
+# class RBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-red balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any red balls
+# 		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('redball-3dshapes', RBall_Shapes3D)
+#
+# class RBBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-RGB balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any RGB balls
+# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
+#
+# class RGBBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-RGB balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+#                   + labels[:, 2].isclose(torch.tensor(0.3))
+#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any RGB balls
+# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+#                     + labels[:, 2].isclose(torch.tensor(0.3))
+#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
 
-	def replacements(self, images, labels): # any red balls
-		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
-trainutils.register_dataset('redball-3dshapes', RBall_Shapes3D)
-
-class RBBall_Shapes3D(Filtered_Shapes3D):
-
-	def selection(self, images, labels): # all non-RGB balls
-		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
-                  + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
-
-	def replacements(self, images, labels): # any RGB balls
-		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
-                    + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-trainutils.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
-
-class RGBBall_Shapes3D(Filtered_Shapes3D):
-
-	def selection(self, images, labels): # all non-RGB balls
-		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
-                  + labels[:, 2].isclose(torch.tensor(0.3))
-                  + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
-
-	def replacements(self, images, labels): # any RGB balls
-		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
-                    + labels[:, 2].isclose(torch.tensor(0.3))
-                    + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
-
-
-class NoCap_Shapes3D(Filtered_Shapes3D):
-	def selection(self, images, labels): # all capsule
-		return labels[:, -2].isclose(torch.tensor(3.))
-trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
+#
+# class NoCap_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all capsule
+# 		return labels[:, -2].isclose(torch.tensor(3.))
+# trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
 
 # class Cylinder_Shapes3D(Filtered_Shapes3D):
 # 	def selection(self, images, labels): # all non-cylinder
@@ -683,36 +692,16 @@ trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
 # 		return labels[:, -2].isclose(torch.tensor(1.))
 # trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
 
-
-class Zoom_Celeba(trainutils.datasets.CelebA): # TODO: generalize zoom/crop dataset to any dataset
-
-	def __init__(self, dataroot, label_type=None, train=True, size=128):
-
-		assert size <= 128, 'original images not large enough to crop to: {}, {}'.format(size, size)
-
-		super().__init__(dataroot=dataroot, label_type=label_type, train=train, resize=False)
-
-		_, self.cy, self.cx = self.din
-		self.cy, self.cx = self.cy//2, self.cx//2
-		self.r = size//2
-
-		din = (3, size, size)
-		if self.dout == self.din:
-			self.dout = din
-		self.din = din
-
-	def __getitem__(self, item):
-		sample = super().__getitem__(item)
-
-		img, *other = sample
-		img = img[..., self.cy-self.r:self.cy+self.r, self.cx-self.r:self.cx+self.r]
-
-		return (img, *other)
-trainutils.register_dataset('z-celeba', Zoom_Celeba)
-
-
+@trn.Dataset('atari')
 class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
-	def __init__(self, dataroot, game, train=True):
+	def __init__(self, A, game=None):
+
+		dataroot = A.pull('dataroot')
+
+		if game is not None:
+			game = A.pull('game') # available games: Asterix, Seaquest, SpaceInvaders, MsPacman
+
+		train = A.pull('train')
 
 		dataroot = os.path.join(dataroot, 'atari', game)
 
@@ -752,60 +741,52 @@ class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
 		img = F.interpolate(img, size=(128,128), mode='bilinear').squeeze(0)
 		return img,
 
-class Asterix_Playback(Atari_Playback):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, game='Asterix', **kwargs)
-trainutils.register_dataset('asterix', Asterix_Playback)
+# class Asterix_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='Asterix', **kwargs)
+# trainutils.register_dataset('asterix', Asterix_Playback)
+#
+# class Seaquest_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='Seaquest', **kwargs)
+# trainutils.register_dataset('seaquest', Seaquest_Playback)
+#
+# class SpaceInvaders_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='SpaceInvaders', **kwargs)
+# trainutils.register_dataset('spaceinv', SpaceInvaders_Playback)
+#
+# class Pacman_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='MsPacman', **kwargs)
+# trainutils.register_dataset('pacman', Pacman_Playback)
 
-class Seaquest_Playback(Atari_Playback):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, game='Seaquest', **kwargs)
-trainutils.register_dataset('seaquest', Seaquest_Playback)
-
-class SpaceInvaders_Playback(Atari_Playback):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, game='SpaceInvaders', **kwargs)
-trainutils.register_dataset('spaceinv', SpaceInvaders_Playback)
-
-class Pacman_Playback(Atari_Playback):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, game='MsPacman', **kwargs)
-trainutils.register_dataset('pacman', Pacman_Playback)
-
-
+@fd.AutoModifier('transfer')
 class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
-	def __init__(self, dataroot, new, old=None, budget=None, old2new_ratio=1, train=True,
-	             new_kwargs=None, old_kwargs=None, **unused):
+	def __init__(self, A, new=None, budget=None, old2new_ratio=None):
 		'''
 		Train a model that was pretrained on 'old' dataset to generalize to 'new'
 		'new' should be much smaller than 'old'
 		'''
 
-		if new_kwargs is None:
-			new_kwargs = {}
-		if old_kwargs is None:
-			old_kwargs = new_kwargs.copy()
-		if old is None:
-			old = new
-			new_kwargs['negative'] = True
+		if new is None:
+			new = A.pull('transfer')
 
-		new = trainutils.get_dataset(new, dataroot=dataroot, **new_kwargs)
+		if budget is None:
+			budget = A.pull('budget', None)
+		if old2new_ratio is None:
+			old2new_ratio = A.pull('old2new_ratio', 1)
 
-		old = trainutils.get_dataset(old, dataroot=dataroot, **old_kwargs)
+		assert self.din == new.din and self.dout == new.dout, 'datasets are not compatible'
 
-
-		assert old.din == new.din and old.dout == new.dout, 'datasets are not compatible'
-
-		super().__init__(din=old.din, dout=old.dout, train=train)
+		super().__init__(A)
 
 		if budget is not None:
 			inds = torch.randperm(len(new))[:budget]
 			new = datautils.Subset_Dataset(new, inds)
 		self.new = new
 
-		self.old = old
-
-		self.num_old = min(int(old2new_ratio * len(self.new)), len(old))
+		self.num_old = min(int(old2new_ratio * len(self.new)), len(self))
 		self.num_new = len(self.new)
 
 		self.resample_old()
@@ -819,17 +800,18 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 	def __getitem__(self, item):
 		if item < self.num_new:
 			return self.new[item]
-		return self.old[self.old_inds[item-self.num_new]]
+		return super().__getitem__(self.old_inds[item-self.num_new])
 
 	def pre_epoch(self, mode, epoch):
 		if mode == 'train':
 			print('Replacing old samples')
 			self.resample_old()
-trainutils.register_dataset('transfer', Transfer_Dataset)
+# trainutils.register_dataset('transfer', Transfer_Dataset)
 
 
 # Deep Hybridization - using AdaIN
 
+@fd.Component('adain')
 class AdaIN(fd.Model):
 	def __init__(self, A):
 
@@ -881,29 +863,26 @@ class AdaIN(fd.Model):
 			q = self.process_noise(n)
 			x = self.include_noise(x, q)
 		return x
-trainutils.register_model('ada-in', AdaIN)
+# trainutils.register_model('ada-in', AdaIN)
 
+@fd.Component('norm-ada-in')
 class Norm_AdaIN(AdaIN):
-
 	def __init__(self, A):
-
 		if 'net' in A:
 			assert '_mod' in A.net and A.net._mod == 'normal', 'must output a distribution'
-
 		super().__init__(A)
 
 	def include_noise(self, x, q):
-
 		mu, sigma = q.loc, q.scale
-
 		if len(x.shape) != len(mu.shape):
 			assert len(x.shape) > len(mu.shape), 'not the right sizes: {} vs {}'.format(x.shape, mu.shape)
 			mu = mu.view(*mu.shape, *(1,)*(len(x.shape)-len(mu.shape)))
 			sigma = sigma.view(*sigma.shape, *(1,) * (len(x.shape) - len(sigma.shape)))
 
 		return sigma*x + mu
-trainutils.register_model('norm-ada-in', Norm_AdaIN)
+# trainutils.register_model('norm-ada-in', Norm_AdaIN)
 
+@fd.Component('adain-double-dec')
 class AdaIn_Double_Decoder(models.Double_Decoder):
 
 	def __init__(self, A):
@@ -1029,7 +1008,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 
 		return super().forward(init)
 
-trainutils.register_model('adain-double-dec', AdaIn_Double_Decoder)
+# trainutils.register_model('adain-double-dec', AdaIn_Double_Decoder)
 
 
 class Disentanglement_Tracker(object): # Interventional Robustness
@@ -1066,17 +1045,17 @@ class Disentanglement_Tracker(object): # Interventional Robustness
 
 
 def get_data(A, mode='train'):
-	return trainutils.default_load_data(A, mode=mode)
+	return trn.default_load_data(A, mode=mode)
 
 def get_model(A):
-	return trainutils.default_create_model(A)
+	return trn.default_create_model(A)
 
 def get_name(A):
 	assert 'name' in A, 'Must provide a name manually'
 	return A.name
 
 def main(argv=None):
-	return trainutils.main(argv=argv, get_data=get_data, get_model=get_model, get_name=get_name)
+	return trn.main(argv=argv, get_data=get_data, get_model=get_model, get_name=get_name)
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
