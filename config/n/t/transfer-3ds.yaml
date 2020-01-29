@@ -1,0 +1,19 @@
+#parents: ['n/3dshapes']
+
+dataset:
+
+    name: 'transfer'
+
+    budget: 500
+
+    old2new_ratio: 1
+
+#    new:
+#        _type: 'dataset/byfactor'
+#
+#        factor: shape
+#
+#        counts: [0, 100, 0, 0] # [box, cyl, ball, cap]
+
+info:
+    dataset_type: '3dSshape1'

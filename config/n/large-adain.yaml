@@ -1,0 +1,8 @@
+parents: ['n/adain-dec', 'n/large-double']
+
+model:
+
+    generator:
+        splits: 4
+        adain_latent_dim: 20
+

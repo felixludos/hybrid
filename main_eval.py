@@ -188,7 +188,35 @@ def main(argv=None):
 	M.prep_info(args.ckpt)
 
 	if args.auto_skip:
-		raise NotImplementedError
+		sM = Hybrid_Controller(root=args.save_dir).filter_strs('!test')
+
+		for srun in sM:
+			if srun.name in M:
+				run = M(srun.name)
+				if srun.ckpt == run.ckpt:
+					print('Auto-skipping: {}'.format(run.name))
+					del M[run.idx]
+				else:
+					print('Found preexisting run {}, but ckpt {} instead of {}'.format(run.name, srun.ckpt, run.ckpt))
+
+
+		del sM
+
+		# done = os.listdir(args.save_dir)
+
+		# dnames, dckpts = [], []
+
+		# for d in done:
+		# 	*dname, dckpt = d.split('_')
+		# 	dnames.append('_'.join(dname))
+		# 	dckpts.append('')
+
+		# for run in M:
+
+
+
+
+		# raise NotImplementedError
 
 
 	# print('\nCheckpoints: ')

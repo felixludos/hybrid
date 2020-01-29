@@ -661,73 +661,6 @@ class ByFactor(trn.datasets.Shapes3D):
 
 		return inds
 
-# trainutils.register_dataset('byfactor', ByFactor)
-
-# class RBall_Shapes3D(Filtered_Shapes3D):
-#
-# 	def selection(self, images, labels): # all non-red balls
-# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
-#
-# 	def replacements(self, images, labels): # any red balls
-# 		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
-# trainutils.register_dataset('redball-3dshapes', RBall_Shapes3D)
-#
-# class RBBall_Shapes3D(Filtered_Shapes3D):
-#
-# 	def selection(self, images, labels): # all non-RGB balls
-# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
-#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
-#
-# 	def replacements(self, images, labels): # any RGB balls
-# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
-#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-# trainutils.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
-#
-# class RGBBall_Shapes3D(Filtered_Shapes3D):
-#
-# 	def selection(self, images, labels): # all non-RGB balls
-# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
-#                   + labels[:, 2].isclose(torch.tensor(0.3))
-#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
-#
-# 	def replacements(self, images, labels): # any RGB balls
-# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
-#                     + labels[:, 2].isclose(torch.tensor(0.3))
-#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
-# trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
-
-#
-# class NoCap_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all capsule
-# 		return labels[:, -2].isclose(torch.tensor(3.))
-# trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
-
-# class Cylinder_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all non-cylinder
-# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)))
-# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
-#
-# class Ball_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all non-ball
-# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
-# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
-#
-# class Cube_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all non-ball
-# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
-# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
-#
-# class CylBall_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all non-(ball or cyl)
-# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.)))
-# trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
-
-
-# class Cylinder_Shapes3D(Filtered_Shapes3D):
-# 	def selection(self, images, labels): # all cylinder
-# 		return labels[:, -2].isclose(torch.tensor(1.))
-# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
-
 @trn.Dataset('atari')
 class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
 	def __init__(self, A, game=None):
@@ -777,57 +710,78 @@ class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
 		img = F.interpolate(img, size=(128,128), mode='bilinear').squeeze(0)
 		return img,
 
-# class Asterix_Playback(Atari_Playback):
-# 	def __init__(self, *args, **kwargs):
-# 		super().__init__(*args, game='Asterix', **kwargs)
-# trainutils.register_dataset('asterix', Asterix_Playback)
-#
-# class Seaquest_Playback(Atari_Playback):
-# 	def __init__(self, *args, **kwargs):
-# 		super().__init__(*args, game='Seaquest', **kwargs)
-# trainutils.register_dataset('seaquest', Seaquest_Playback)
-#
-# class SpaceInvaders_Playback(Atari_Playback):
-# 	def __init__(self, *args, **kwargs):
-# 		super().__init__(*args, game='SpaceInvaders', **kwargs)
-# trainutils.register_dataset('spaceinv', SpaceInvaders_Playback)
-#
-# class Pacman_Playback(Atari_Playback):
-# 	def __init__(self, *args, **kwargs):
-# 		super().__init__(*args, game='MsPacman', **kwargs)
-# trainutils.register_dataset('pacman', Pacman_Playback)
 
-@fd.AutoModifier('transfer')
-class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
-	def __init__(self, A, new=None, budget=None, old2new_ratio=None):
+@trn.Dataset('transfer')
+class Transfer_Dataset(datautils.Info_Dataset):
+	def __init__(self, A):
 		'''
 		Train a model that was pretrained on 'old' dataset to generalize to 'new'
 		'new' should be much smaller than 'old'
 		'''
 
-		assert False, 'pre_epoch not setup for datasets yet'
+		# assert False, 'pre_epoch not setup for datasets yet'
 
-		if new is None:
-			new = A.pull('_new')
+		load = A.pull('load') # Testing
+		print('Using pretrained model: {}'.format(load))
 
-		if budget is None:
-			budget = A.pull('budget', None)
-		if old2new_ratio is None:
-			old2new_ratio = A.pull('old2new_ratio', 1)
+		assert 'old' in A and 'new' in A, 'no datasets to compare'
 
-		assert self.din == new.din and self.dout == new.dout, 'datasets are not compatible'
-
-		super().__init__(A)
+		budget = A.pull('budget', None)
+		old2new_ratio = A.pull('old2new_ratio', 1)
 
 		if budget is not None:
-			inds = torch.randperm(len(new))[:budget]
-			new = datautils.Subset_Dataset(new, inds)
-		self.new = new
+			if A.old._type == 'dataset/byfactor' and 'counts' in A.old:
+				cnts = A.old.counts
+				A.old.counts = [(budget if c == -2 else c) for c in cnts]
+				print('Replaced counts in old: from {} to {}'.format(cnts, A.old.counts))
+			if A.new._type == 'dataset/byfactor' and 'counts' in A.new:
+				cnts = A.new.counts
+				A.new.counts = [(budget if c == -2 else c) for c in cnts]
+				print('Replaced counts in new: from {} to {}'.format(cnts, A.new.counts))
+				budget = None
 
-		self.num_old = min(int(old2new_ratio * len(self.new)), len(self))
+		old = A.pull('old')
+
+		try:
+			new = self._derive_new_from_old(old)
+		except NotImplementedError:
+			new = None
+
+		if new is None:
+			new = A.pull('new')
+
+		assert old.din == new.din and old.dout == new.dout, 'datasets are not compatible'
+
+		super().__init__(old.din, old.dout)
+
+
+		self.new = new
+		self.old = old
+		self._limit_new(budget)
+
+		self.num_old = min(int(old2new_ratio * len(self.new)), len(self.old))
 		self.num_new = len(self.new)
 
 		self.resample_old()
+
+	def _limit_new(self, budget):
+		return
+		if budget is not None:
+			new = self.new
+			if len(new) < budget:
+				raise Exception('Not enough samples in new dataset {} for a budget of {}'.format(len(new), budget))
+			elif len(new) > budget:
+				if isinstance(new, ByFactor):
+					cnts = new.counts
+
+				inds = torch.randperm(len(new))[:budget]
+				new = datautils.Subset_Dataset(new, inds)
+				raise NotImplementedError
+
+			self.new = new
+
+	def _derive_new_from_old(self, old):
+		raise NotImplementedError
 
 	def __len__(self):
 		return self.num_old + self.num_new
@@ -838,14 +792,19 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 	def __getitem__(self, item):
 		if item < self.num_new:
 			return self.new[item]
-		return super().__getitem__(self.old_inds[item-self.num_new])
+		return self.old[self.old_inds[item-self.num_new]]
 
 	def pre_epoch(self, mode, epoch):
 		if mode == 'train':
-			print('Replacing old samples')
+			print('Replacing old samples')# Testing
 			self.resample_old()
-# trainutils.register_dataset('transfer', Transfer_Dataset)
+		self.old.pre_epoch(mode, epoch)
+		self.new.pre_epoch(mode, epoch)
 
+	def post_epoch(self, mode, epoch, stats=None):
+		self.old.post_epoch(mode, epoch, stats=stats)
+		self.new.post_epoch(mode, epoch, stats=stats)
+# trainutils.register_dataset('transfer', Transfer_Dataset)
 
 # Deep Hybridization - using AdaIN
 
@@ -1098,4 +1057,148 @@ def main(argv=None):
 
 if __name__ == '__main__':
 	sys.exit(main(sys.argv))
+
+
+
+
+# class Asterix_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='Asterix', **kwargs)
+# trainutils.register_dataset('asterix', Asterix_Playback)
+#
+# class Seaquest_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='Seaquest', **kwargs)
+# trainutils.register_dataset('seaquest', Seaquest_Playback)
+#
+# class SpaceInvaders_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='SpaceInvaders', **kwargs)
+# trainutils.register_dataset('spaceinv', SpaceInvaders_Playback)
+#
+# class Pacman_Playback(Atari_Playback):
+# 	def __init__(self, *args, **kwargs):
+# 		super().__init__(*args, game='MsPacman', **kwargs)
+# trainutils.register_dataset('pacman', Pacman_Playback)
+
+# @fd.AutoModifier('transfer')
+# class Transfer_Dataset(datautils.Info_Dataset):
+# 	def __init__(self, A, new=None, budget=None, old2new_ratio=None):
+# 		'''
+# 		Train a model that was pretrained on 'old' dataset to generalize to 'new'
+# 		'new' should be much smaller than 'old'
+# 		'''
+#
+# 		# assert False, 'pre_epoch not setup for datasets yet'
+#
+# 		load = A.pull('load')
+# 		print('Using pretrained model: {}'.format(load))
+#
+# 		if new is None:
+# 			new = A.pull('_new')
+#
+# 		if budget is None:
+# 			budget = A.pull('budget', None)
+# 		if old2new_ratio is None:
+# 			old2new_ratio = A.pull('old2new_ratio', 1)
+#
+# 		assert self.din == new.din and self.dout == new.dout, 'datasets are not compatible'
+#
+# 		super().__init__(A)
+#
+# 		if budget is not None:
+# 			inds = torch.randperm(len(new))[:budget]
+# 			new = datautils.Subset_Dataset(new, inds)
+# 		self.new = new
+#
+# 		self.num_old = min(int(old2new_ratio * len(self.new)), len(self))
+# 		self.num_new = len(self.new)
+#
+# 		self.resample_old()
+#
+# 	def __len__(self):
+# 		return self.num_old + self.num_new
+#
+# 	def resample_old(self):
+# 		self.old_inds = torch.randint(0, len(self.old), size=(self.num_old,))
+#
+# 	def __getitem__(self, item):
+# 		if item < self.num_new:
+# 			return self.new[item]
+# 		return super().__getitem__(self.old_inds[item-self.num_new])
+#
+# 	def pre_epoch(self, mode, epoch):
+# 		if mode == 'train':
+# 			print('Replacing old samples')
+# 			self.resample_old()
+# trainutils.register_dataset('transfer', Transfer_Dataset)
+
+
+
+# trainutils.register_dataset('byfactor', ByFactor)
+
+# class RBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-red balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any red balls
+# 		return torch.arange(len(images))[labels[:, 2].isclose(torch.tensor(0.)) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('redball-3dshapes', RBall_Shapes3D)
+#
+# class RBBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-RGB balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any RGB balls
+# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('rbball-3dshapes', RBBall_Shapes3D)
+#
+# class RGBBall_Shapes3D(Filtered_Shapes3D):
+#
+# 	def selection(self, images, labels): # all non-RGB balls
+# 		return torch.logical_not(labels[:, 2].isclose(torch.tensor(0.))
+#                   + labels[:, 2].isclose(torch.tensor(0.3))
+#                   + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))
+#
+# 	def replacements(self, images, labels): # any RGB balls
+# 		return torch.arange(len(images))[(labels[:, 2].isclose(torch.tensor(0.))
+#                     + labels[:, 2].isclose(torch.tensor(0.3))
+#                     + labels[:, 2].isclose(torch.tensor(0.7))) * labels[:, -2].isclose(torch.tensor(2.))]
+# trainutils.register_dataset('rgbball-3dshapes', RGBBall_Shapes3D)
+
+#
+# class NoCap_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all capsule
+# 		return labels[:, -2].isclose(torch.tensor(3.))
+# trainutils.register_dataset('nocap-3dshapes', NoCap_Shapes3D)
+
+# class Cylinder_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-cylinder
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)))
+# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
+#
+# class Ball_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-ball
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
+#
+# class Cube_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-ball
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('ball-3dshapes', Ball_Shapes3D)
+#
+# class CylBall_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all non-(ball or cyl)
+# 		return torch.logical_not(labels[:, -2].isclose(torch.tensor(1.)) + labels[:, -2].isclose(torch.tensor(2.)))
+# trainutils.register_dataset('cylball-3dshapes', CylBall_Shapes3D)
+
+
+# class Cylinder_Shapes3D(Filtered_Shapes3D):
+# 	def selection(self, images, labels): # all cylinder
+# 		return labels[:, -2].isclose(torch.tensor(1.))
+# trainutils.register_dataset('cylinder-3dshapes', Cylinder_Shapes3D)
 
