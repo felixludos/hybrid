@@ -1,5 +1,9 @@
 parents: ['n/3dshapes']
 
+training:
+
+    step_limit: 80000
+
 dataset:
     name: 'byfactor'
 

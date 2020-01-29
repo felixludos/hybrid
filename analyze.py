@@ -388,7 +388,9 @@ def run_model(S, pbar=None, **unused):
 		if 'results' not in S:
 			S.results = {}
 		S.results['val_Q'] = full_q
-		print('Storing {} latent vectors'.format(len(full_q)))
+
+		print('Storing {} latent vectors'.format(len(full_q if not isinstance(full_q, distrib.Distribution)
+		                                             else full_q.loc)))
 
 
 

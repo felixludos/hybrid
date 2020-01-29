@@ -474,6 +474,35 @@ class Factor_WPP(Wasserstein_PP):
 			
 		return reg
 
+@fd.Component('swpp')
+class Slice_WPP(Wasserstein_PP):
+
+	def __init__(self, A):
+
+		reg_prior = A.pull('reg_prior', 0)
+		slices = A.pull('slices', '<>latent_dim')
+
+		super().__init__(A)
+
+		self.slices = slices
+		self.reg_prior = reg_prior
+
+
+	def sample_slices(self, N=None): # sampled D dim unit vectors
+		if N is None:
+			N = self.slices
+
+		return F.normalize(torch.randn(N, self.latent_dim, device=self.device))
+
+	def regularize(self, q):
+
+		s = self.sample_slices()
+
+
+
+		pass
+
+
 @fd.Component('fvpp')
 class FactorVAE(Factor_WPP, WPP_VAE):
 	pass
@@ -779,7 +808,7 @@ class Transfer_Dataset(datautils.Testable_Dataset, datautils.Info_Dataset):
 		assert False, 'pre_epoch not setup for datasets yet'
 
 		if new is None:
-			new = A.pull('transfer')
+			new = A.pull('_new')
 
 		if budget is None:
 			budget = A.pull('budget', None)

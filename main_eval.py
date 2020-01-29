@@ -66,6 +66,7 @@ def get_parser(parser=None):
 	parser.add_argument('--models', type=str, nargs='+', default=None)
 	parser.add_argument('--datasets', type=str, nargs='+', default=None)
 	parser.add_argument('--strs', type=str, nargs='+', default=None)
+	parser.add_argument('--min-ckpt', type=int, default=None)
 
 
 	parser.add_argument('--skip', type=int, default=None)
@@ -186,13 +187,21 @@ def main(argv=None):
 	print('Loading checkpoint: {}'.format(args.ckpt if args.ckpt is not None else '[last]'))
 	M.prep_info(args.ckpt)
 
+	if args.auto_skip:
+		raise NotImplementedError
+
+
 	# print('\nCheckpoints: ')
 	# for run in M.active:
 	# 	print(run.ckpt_path)
 
+	if args.min_ckpt is not None:
+		print('Filtering out runs with less than {} checkpoints'.format(args.min_ckpt))
+		M.filter_min(ckpt=args.min_ckpt)
+
 	print('\nRun info')
 
-	M.show('all')
+	M.sort_by('date').show('all')
 
 	runs = M.active
 	del M.full_info
