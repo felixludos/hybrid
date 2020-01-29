@@ -4,7 +4,7 @@ dataset:
 
     name: 'transfer'
 
-    budget: 500
+    budget: 600
 
     old2new_ratio: 1
 

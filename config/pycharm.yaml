@@ -2,9 +2,9 @@
 #parents: ['wae', 'large-double', 'atari']
 
 #parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
-#parents: ['n/vae', 'n/double', 'n/t/box-cyl-ball']
+parents: ['n/wae', 'n/double', 'n/3dshapes']
 
-parents: ['celeba']
+#parents: ['celeba']
 
 #parents: ['transfer/cyl-ball']
 
@@ -12,7 +12,7 @@ parents: ['celeba']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
-load: 3dSshape1-wae_0002-6026518-10_200129-001725/checkpoint_27.pth.tar
+#load: 3dSshape1-wae_0002-6026518-10_200129-001725/checkpoint_27.pth.tar
 
 #game: pacman
 
@@ -39,9 +39,14 @@ dataset:
 #
 #  time_limit: 0.01
 #
-#model:
+model:
 #  latent_reg_wt: 4
 #  _type: wpp
+
+  lr: 2.e-3
+#  norm_type: batch
+#  residual: True
+
 #
 ##  gan_wt: 1
 #

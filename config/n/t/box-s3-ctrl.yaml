@@ -1,0 +1,13 @@
+parents: ['n/t/box']
+
+training:
+
+    step_limit: 100000
+
+
+dataset:
+
+    counts: [-1, 200, 200, 200] # [box, cyl, ball, cap]
+
+info:
+    dataset_type: '3dSshape1s3c'

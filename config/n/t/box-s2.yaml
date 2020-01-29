@@ -22,7 +22,7 @@ dataset:
 
         factor: shape
 
-        counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
+        counts: [0, 300, 300, 0] # [box, cyl, ball, cap]
 
 info:
-    dataset_type: '3dSshape1s1'
+    dataset_type: '3dSshape1s2'
