@@ -721,8 +721,8 @@ class Transfer_Dataset(datautils.Info_Dataset):
 
 		# assert False, 'pre_epoch not setup for datasets yet'
 
-		load = A.pull('load') # Testing
-		print('Using pretrained model: {}'.format(load))
+		# load = A.pull('load') # Testing
+		# print('Using pretrained model: {}'.format(load))
 
 		assert 'old' in A and 'new' in A, 'no datasets to compare'
 

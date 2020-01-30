@@ -8,6 +8,10 @@ dataset:
 
     old2new_ratio: 1
 
+    batch_size: 128
+
+    val_split: 0.1
+
 #    new:
 #        _type: 'dataset/byfactor'
 #
@@ -16,4 +20,4 @@ dataset:
 #        counts: [0, 100, 0, 0] # [box, cyl, ball, cap]
 
 info:
-    dataset_type: '3dSshape1'
+    dataset_type: 'transfer-3ds'
