@@ -1,0 +1,7 @@
+parents: ['n/fwae']
+
+model:
+    reg_prior: 0
+
+info:
+    model_type: 'fae'
