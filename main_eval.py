@@ -58,6 +58,9 @@ def get_parser(parser=None):
 	parser.add_argument('--save-dir', type=str, default=None)
 
 
+	parser.add_argument('--names', type=str, nargs='+', default=None)
+
+
 	parser.add_argument('--include', type=str, nargs='+', default=[])
 
 	# filter
@@ -67,6 +70,7 @@ def get_parser(parser=None):
 	parser.add_argument('--datasets', type=str, nargs='+', default=None)
 	parser.add_argument('--strs', type=str, nargs='+', default=None)
 	parser.add_argument('--min-ckpt', type=int, default=None)
+
 
 
 	parser.add_argument('--skip', type=int, default=None)
@@ -159,31 +163,38 @@ def main(argv=None):
 	args.include = set(args.include)
 	forced = [run for run in M.full_info if run.name in args.include]
 
-	if args.jobs is not None:
-		print('Filtering out all jobs except: {}'.format(', '.join(map(str,args.jobs))))
-		M.filter_jobs(*args.jobs)
+	if args.names is not None:
+		M.clear()
 
-	if args.models is not None:
-		print('Filtering out all models except: {}'.format(', '.join(args.models)))
-		M.filter_models(*args.models)
+		M.add(*args.names)
 
-	if args.datasets is not None:
-		print('Filtering out all datasets except: {}'.format(', '.join(args.datasets)))
-		M.filter_datasets(*args.datasets)
 
-	if args.strs is not None:
-		print('Filtering out all except containing: {}'.format(', '.join(args.strs)))
-		M.filter_datasets(*args.strs)
+	else:
 
-	if args.remove_all:
-		M.active.clear()
-		M.name2idx = None
+		if args.jobs is not None:
+			print('Filtering out all jobs except: {}'.format(', '.join(map(str,args.jobs))))
+			M.filter_jobs(*args.jobs)
 
-	if len(forced):
-		missing = [run for run in forced if run not in M]
-		if len(missing):
-			M.extend(missing)
-			print('Included {} additional runs'.format(len(missing)))
+		if args.models is not None:
+			print('Filtering out all models except: {}'.format(', '.join(args.models)))
+			M.filter_models(*args.models)
+
+		if args.datasets is not None:
+			print('Filtering out all datasets except: {}'.format(', '.join(args.datasets)))
+			M.filter_datasets(*args.datasets)
+
+		if args.strs is not None:
+			print('Filtering out all except containing: {}'.format(', '.join(args.strs)))
+			M.filter_datasets(*args.strs)
+
+		if args.remove_all:
+			M.clear()
+
+		if len(forced):
+			missing = [run for run in forced if run not in M]
+			if len(missing):
+				M.extend(missing)
+				print('Included {} additional runs'.format(len(missing)))
 
 	# print('\nRemaining jobs:')
 	# M.show()
