@@ -967,7 +967,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 					A.adain.ada_noise = dim
 					A.adain.features = ochn
 
-				adain = A.pull('adain')
+				adain = A.pull('adain', force_new=True)
 
 				if 'ada_noise' in A.adain:
 					del A.adain.ada_noise
