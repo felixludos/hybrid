@@ -44,14 +44,15 @@ from run_fid import compute_inception_stat, load_inception_model, compute_freche
 def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
               reverse_rows=False, grdlines=False):
 	if H is None and W is None:
-		B = imgs.size(0)
-		l = int(np.sqrt(B))
-		assert l ** 2 == B, 'not right: {} {}'.format(l, B)
-		H, W = l, l
-	elif H is None:
-		H = imgs.shape[0] // W
-	elif W is None:
-		W = imgs.shape[0] // H
+	# 	B = imgs.size(0)
+	# 	l = int(np.sqrt(B))
+	# 	assert l ** 2 == B, 'not right: {} {}'.format(l, B)
+	# 	H, W = l, l
+	# elif H is None:
+	# 	H = imgs.shape[0] // W
+	# elif W is None:
+	# 	W = imgs.shape[0] // H
+		H,W = util.calc_tiling(imgs.size(0))
 
 	imgs = imgs.cpu().permute(0, 2, 3, 1).squeeze().numpy()
 

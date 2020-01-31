@@ -6,8 +6,8 @@ model:
     factors: 2
 
     down_type: 'max'
-    up_type: 'nearest'
-    norm_type: 'instance'
+    up_type: 'bilinear'
+    norm_type: 'group'
 
     nonlin: 'elu'
 

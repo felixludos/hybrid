@@ -2,7 +2,7 @@
 #parents: ['wae', 'large-double', 'atari']
 
 #parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
-parents: ['n/ae', 'n/adain-dec', 'n/3dshapes']
+parents: ['n/ae', 'n/double', 'n/3dshapes']
 
 #parents: ['celeba']
 
@@ -34,19 +34,19 @@ dataset:
 ##  unique_tests: True
 #  save_freq: 60
 ##
-#training:
+training:
 #  val_freq: 60
-#  step_limit: 100000
+  step_limit: 1000
 #
 #  time_limit: 0.01
 #
-#model:
+model:
 #  latent_reg_wt: 4
 #  _type: wpp
 
 #  lr: 2.e-3
-#  norm_type: batch
-#  residual: True
+  norm_type: None
+  residual: True
 
 #
 ##  gan_wt: 1
