@@ -1,0 +1,13 @@
+parents: ['n/dwae']
+
+model:
+
+    latent_reg_wt: 0
+
+
+
+
+
+info:
+    model_type: 'dae'
+

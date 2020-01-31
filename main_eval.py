@@ -112,6 +112,10 @@ def main(argv=None):
 		print('in pycharm')
 
 		argv = ['--jobs', '157']
+
+
+		argv = '--pbar --save-dir /is/ei/fleeb/workspace/media/hybrid/results --auto-skip --dataset 3dshapes --models fwae'.split(' ')
+
 		argv.extend(['--dataroot', '/is/ei/fleeb/workspace/chome/trained_nets'])
 
 		return 1 # no accidental runs in debugger
@@ -188,16 +192,20 @@ def main(argv=None):
 	M.prep_info(args.ckpt)
 
 	if args.auto_skip:
+		print('Trying to autoskip')
 		sM = Hybrid_Controller(root=args.save_dir).filter_strs('!test')
 
 		for srun in sM:
-			if srun.name in M:
-				run = M(srun.name)
-				if srun.ckpt == run.ckpt:
+
+			name = '_'.join(srun.name.split('_')[:-1])
+
+			if name in M:
+				run = M(name)
+				if srun.meta.ckpt == run.meta.ckpt:
 					print('Auto-skipping: {}'.format(run.name))
 					del M[run.idx]
 				else:
-					print('Found preexisting run {}, but ckpt {} instead of {}'.format(run.name, srun.ckpt, run.ckpt))
+					print('Found preexisting run {}, but ckpt {} instead of {}'.format(run.name, srun.meta.ckpt, run.meta.ckpt))
 
 
 		del sM
