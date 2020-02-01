@@ -1,0 +1,10 @@
+parents: ['n/atari']
+
+
+dataset:
+  game: 'Asterix'
+
+info:
+  dataset_type: 'asterix'
+
+

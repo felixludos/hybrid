@@ -1,0 +1,10 @@
+parents: ['n/atari']
+
+
+dataset:
+  game: 'Seaquest'
+
+info:
+  dataset_type: 'seaquest'
+
+

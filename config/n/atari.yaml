@@ -1,12 +1,12 @@
-parents: ['basics']
+parents: ['n/basics']
 
 #name: 'test-3dshapes'
 
 training:
-    epochs: 100
+    epochs: 200000
 
 dataset:
-    name: '<>game'
+    name: 'atari'
 
     batch_size: 32
 

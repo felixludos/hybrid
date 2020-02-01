@@ -1,0 +1,10 @@
+parents: ['n/atari']
+
+
+dataset:
+  game: 'SpaceInvaders'
+
+info:
+  dataset_type: 'spaceinv'
+
+

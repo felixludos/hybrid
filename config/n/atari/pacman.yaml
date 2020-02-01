@@ -1,0 +1,10 @@
+parents: ['n/atari']
+
+
+dataset:
+  game: 'MsPacman'
+
+info:
+  dataset_type: 'pacman'
+
+

@@ -625,7 +625,7 @@ class ByFactor(trn.datasets.Shapes3D):
 		self.factor_idx = factor_idx
 		self.factor_size = factor_size
 
-		sel = self.subsample(vals, counts, seeds)
+		sel = self._subsample(vals, counts, seeds)
 
 		print('Filtering out {}/{} samples'.format(len(self.images)-len(sel), len(self.images)))
 
@@ -648,14 +648,13 @@ class ByFactor(trn.datasets.Shapes3D):
 
 		return indices
 
-	def subsample(self, vals, counts, seeds):
+	def _subsample(self, vals, counts, seeds):
 
 		samples = self.labels[:,self.factor_idx]
 
 		inds = []
 		for val, cnt, seed in zip(vals, counts, seeds):
 			inds.append(self._filter(samples, val, num=cnt, seed=seed))
-
 
 		inds = np.concatenate(inds)
 
@@ -667,10 +666,12 @@ class Atari_Playback(datautils.Testable_Dataset, datautils.Info_Dataset):
 
 		dataroot = A.pull('dataroot')
 
-		if game is not None:
+		if game is None:
 			game = A.pull('game') # available games: Asterix, Seaquest, SpaceInvaders, MsPacman
 
-		train = A.pull('train')
+		assert game in {'Asterix', 'Seaquest', 'SpaceInvaders', 'MsPacman'}, 'game not available'
+
+		train = A.pull('train', True)
 
 		dataroot = os.path.join(dataroot, 'atari', game)
 
@@ -805,6 +806,15 @@ class Transfer_Dataset(datautils.Info_Dataset):
 		self.old.post_epoch(mode, epoch, stats=stats)
 		self.new.post_epoch(mode, epoch, stats=stats)
 # trainutils.register_dataset('transfer', Transfer_Dataset)
+
+
+
+
+
+
+
+
+
 
 # Deep Hybridization - using AdaIN
 
