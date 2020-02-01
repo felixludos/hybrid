@@ -25,4 +25,4 @@ dataset:
         counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
 
 info:
-    dataset_type: '3dSshape1s1'
+    dataset_type: 'box-s1'
