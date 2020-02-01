@@ -5,24 +5,36 @@ output:
 
 training:
 
-    step_limit: 100000
+    step_limit: 120000
 
 
 dataset:
+    _type: 'dataset/concat'
 
-    old:
-        _type: 'dataset/byfactor'
+    batch_size: 128
+    val_split: 0.1
 
-        factor: shape
-
-        counts: [-1, 0, 0, 0] # [box, cyl, ball, cap]
-
-    new:
-        _type: 'dataset/byfactor'
+    datasets:
 
         factor: shape
 
-        counts: [0, 300, 300, 0] # [box, cyl, ball, cap]
+        _type: 'list'
+        _elements:
+            - _type: 'dataset/transfer'
+              budget: 600
+              old2new_ratio: 1
+
+              old:
+                _type: 'dataset/byfactor'
+                counts: [-1, 0, 0, 0] # [box, cyl, ball, cap]
+
+              new:
+                _type: 'dataset/byfactor'
+                counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
+
+            - _type: 'dataset/byfactor'
+              counts: [0, 0, 600, 0] # [box, cyl, ball, cap]
+
 
 info:
-    dataset_type: '3dSshape1s2'
+    dataset_type: 'box-s2'

@@ -796,7 +796,7 @@ class Transfer_Dataset(datautils.Info_Dataset):
 
 	def pre_epoch(self, mode, epoch):
 		if mode == 'train':
-			print('Replacing old samples')# Testing
+			# print('Replacing old samples')# Testing
 			self.resample_old()
 		self.old.pre_epoch(mode, epoch)
 		self.new.pre_epoch(mode, epoch)
