@@ -54,6 +54,8 @@ model:
 
     disc_steps: 5
 
+    min_log_std: -4
+
     gan_wt: 1.e-4
 
     generator:
