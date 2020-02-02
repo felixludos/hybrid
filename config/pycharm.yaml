@@ -12,11 +12,12 @@ parents: ['n/t/box-s2']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
-load: box-s1-ae_0047-6049598-01_200201-051024
+load: box-s1-wae_0047-6049598-02_200201-050901
 
 #game: pacman
 
 #device: cpu
+seed: 0
 
 #legacy: True
 #
@@ -29,8 +30,8 @@ dataset:
   device: cpu
 #  batch_size: 4
 
-#output:
-#  print_freq: 20
+output:
+  print_freq: 50
 ##  unique_tests: True
 #  save_freq: 60
 ##

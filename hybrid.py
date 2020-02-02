@@ -588,11 +588,11 @@ class ByFactor(trn.datasets.Shapes3D):
 		det = A.pull('det', True)
 
 		labeled = A.pull('labeled', False)
-
 		A.labeled = True
 
 		super().__init__(A)
 
+		A.labeled = labeled
 		self.labeled = labeled
 
 		if not isinstance(factor, int):
@@ -632,9 +632,10 @@ class ByFactor(trn.datasets.Shapes3D):
 		self.images = self.images[sel]
 		self.labels = self.labels[sel]
 
-		if not self.labeled:
+		if True or not self.labeled: # testing
 			del self.labels
 			self.dout = self.din
+			self.labeled = False
 
 	def _filter(self, samples, val, num=None, seed=None):
 

@@ -1,0 +1,28 @@
+parents: ['n/t/transfer-3ds']
+
+output:
+    save_freq: 2000
+
+training:
+
+    step_limit: 100000
+
+
+dataset:
+
+    old:
+        _type: 'dataset/byfactor'
+
+        factor: shape
+
+        counts: [-1, 0, 0, 0] # [box, cyl, ball, cap]
+
+    new:
+        _type: 'dataset/byfactor'
+
+        factor: shape
+
+        counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
+
+info:
+    dataset_type: 'box-s1'

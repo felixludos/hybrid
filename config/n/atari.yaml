@@ -3,7 +3,10 @@ parents: ['n/basics']
 #name: 'test-3dshapes'
 
 training:
-    epochs: 200000
+    step_limit: 200000
+
+output:
+    print_freq: 250
 
 dataset:
     name: 'atari'

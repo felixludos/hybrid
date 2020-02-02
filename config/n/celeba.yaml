@@ -2,6 +2,9 @@ parents: ['n/basics']
 
 #name: 'test-celeba'
 
+output:
+    print_freq: 200
+
 training:
     step_limit: 200000
 

@@ -12,7 +12,7 @@ auto_name: True
 output:
   save_freq: 5000
 
-  print_freq: 100
+  print_freq: 200
 
 training:
 

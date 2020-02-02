@@ -1,4 +1,6 @@
-parents: ['n/t/transfer-3ds']
+#parents: ['n/t/']
+
+legacy: 0
 
 output:
     save_freq: 2000
@@ -14,26 +16,24 @@ dataset:
     batch_size: 128
     val_split: 0.1
 
+    name: '_x_'
+
     datasets:
 
         factor: shape
 
         _type: 'list'
         _elements:
-            - _type: 'dataset/transfer'
-              budget: 600
-              old2new_ratio: 1
+          - _type: 'dataset/byfactor'
+            _mod: 'resamplable'
+            budget: 600
+            counts: [-1, 0, 0, 0] # [box, cyl, ball, cap]
 
-              old:
-                _type: 'dataset/byfactor'
-                counts: [-1, 0, 0, 0] # [box, cyl, ball, cap]
+          - _type: 'dataset/byfactor'
+            counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
 
-              new:
-                _type: 'dataset/byfactor'
-                counts: [0, 600, 0, 0] # [box, cyl, ball, cap]
-
-            - _type: 'dataset/byfactor'
-              counts: [0, 0, 600, 0] # [box, cyl, ball, cap]
+          - _type: 'dataset/byfactor'
+            counts: [0, 0, 600, 0] # [box, cyl, ball, cap]
 
 
 info:
