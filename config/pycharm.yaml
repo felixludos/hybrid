@@ -2,17 +2,17 @@
 #parents: ['wae', 'large-double', 'atari']
 
 #parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
-parents: ['n/dae', 'n/double', 'n/3dshapes']
+#parents: ['n/dae', 'n/double', 'n/3dshapes']
 
 #parents: ['celeba']
 
-#parents: ['n/t/box-s2']
+parents: ['n/t/box-s1']
 
 #parents: ['vae', 'double', '3dshapes']
 
 #resume: 3dshapes-fwae_0102-5966133-02_200109-133116
 
-#load: box-s1-wae_0047-6049598-02_200201-050901
+load: box-dae_0045-6049543-05_200131-224815/checkpoint_16.pth.tar
 
 #game: pacman
 
@@ -35,8 +35,8 @@ output:
 ##  unique_tests: True
 #  save_freq: 60
 ##
-#training:
-#  val_freq: 60
+training:
+  val_freq: 60
 #  step_limit: 1000
 #
 #  time_limit: 0.01

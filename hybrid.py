@@ -230,7 +230,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 
 		# train encoder/generator
 
-		if self.disc_steps <= 1 or self.step_counter % self.disc_steps == 0:
+		if not self.train_me() or self.disc_steps <= 1 or self.step_counter % self.disc_steps == 0:
 
 			if self.gan_wt > 0:
 
