@@ -8,4 +8,4 @@ dataset:
     counts: [-1, -1, -1, 0] # [box, cyl, ball, cap]
 
 info:
-    dataset_type: '3dSshape3'
+    dataset_type: 'nocap'

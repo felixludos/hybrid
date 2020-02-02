@@ -2,11 +2,11 @@
 #parents: ['wae', 'large-double', 'atari']
 
 #parents: ['fdwae', 'adain-dec', 'noisy-3dshapes']
-#parents: ['n/ae', 'n/double', 'n/3dshapes']
+parents: ['n/dae', 'n/double', 'n/3dshapes']
 
 #parents: ['celeba']
 
-parents: ['n/t/box-s2']
+#parents: ['n/t/box-s2']
 
 #parents: ['vae', 'double', '3dshapes']
 
@@ -17,7 +17,7 @@ parents: ['n/t/box-s2']
 #game: pacman
 
 #device: cpu
-seed: 0
+#seed: 0
 
 #legacy: True
 #
@@ -28,7 +28,7 @@ inline: True
 #
 dataset:
   device: cpu
-#  batch_size: 4
+  batch_size: 4
 
 output:
   print_freq: 50
