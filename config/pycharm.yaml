@@ -6,7 +6,7 @@
 
 #parents: ['celeba']
 
-parents: ['n/t/box-s1']
+parents: ['n/t/nocap2cap']
 
 #parents: ['vae', 'double', '3dshapes']
 
