@@ -253,7 +253,7 @@ def _full_analyze(run, save_dir):
 
 	dname = run.meta.dataset
 
-	if 'box' in dname:
+	if 'box' in dname or 'nocap' in dname:
 		dname = '3dshapes'
 
 	# check for existing results
