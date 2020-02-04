@@ -21,11 +21,13 @@ from tqdm import tqdm
 import imageio
 import seaborn as sns
 from collections import OrderedDict
+from PIL import Image, ImageDraw, ImageFont
 #plt.switch_backend('Qt5Agg') #('Qt5Agg')
 import foundation as fd
 from foundation import models
 from foundation import util
 from foundation import train
+from foundation import train as trn
 
 import pandas as pd
 import numpy as np
@@ -189,6 +191,7 @@ def run_model(S, pbar=None, **unused):
 	dataset = S.dataset
 	model = S.model
 
+	assert False, 'unused'
 
 	if 'loader' not in S:
 		# DataLoader
@@ -409,6 +412,251 @@ def run_model(S, pbar=None, **unused):
 
 		print('Storing {} latent vectors'.format(len(full_q if not isinstance(full_q, distrib.Distribution)
 		                                             else full_q.loc)))
+
+
+
+
+def gen_prior(model, N):
+	return model.generate(N)
+
+
+def gen_target(model, X=None, Q=None, hybrid=False, ret_q=False):
+	if Q is None:
+		assert X is not None
+
+		Q = model.encode(X)
+		if isinstance(Q, distrib.Distribution):
+			Q = Q.mean
+
+	if hybrid:
+		Q = util.shuffle_dim(Q)
+
+	gen = model.decode(Q)
+
+	if ret_q:
+		return gen, Q
+	return gen
+
+
+def _new_loader(dataset, batch_size, shuffle=False):
+	return trn.get_loaders(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+def gen_batch(dataset, N=None, loader=None, shuffle=False, seed=None, ret_loader=False):
+	if seed is not None:
+		util.set_seed(seed)
+
+	if loader is None:
+		assert N is not None
+		loader = iter(_new_loader(dataset, batch_size=N, shuffle=shuffle))
+
+	try:
+		batch = util.to(next(loader), 'cuda')
+		B = batch.size(0)
+	except StopIteration:
+		pass
+	else:
+		if N is None or B == N:
+			if ret_loader:
+				return batch[0], loader
+			return batch[0]
+
+	loader = iter(_new_loader(dataset, batch_size=N, shuffle=shuffle))
+	batch = util.to(next(loader), 'cuda')
+
+	if ret_loader:
+		return batch[0], loader
+
+	return batch[0]
+
+
+def compute_all_fid_scores(model, dataset, fid_stats_ref_path, fid=None):
+	if fid is None:
+		fid = {'scores': {}, 'stats': {}}
+
+	path = os.path.join(os.environ["FOUNDATION_DATA_DIR"], fid_stats_ref_path)
+	f = pickle.load(open(path, 'rb'))
+	ref_stats = f['m'][:], f['sigma'][:]
+
+	inception = load_inception_model(dim=2048, device='cuda')
+
+	n_samples = 50000
+	# n_samples = 100 # testing
+
+	# rec
+	name = 'rec'
+	if name not in fid['scores']:
+		util.set_seed(0)
+		loader = None
+
+		def _generate(N):
+			nonlocal loader
+			X, loader = gen_batch(dataset, loader=loader, shuffle=True, N=N, ret_loader=True)
+			return gen_target(model, X=X, hybrid=False)
+
+		stats = compute_inception_stat(_generate, inception=inception, pbar=tqdm, n_samples=n_samples)
+
+		fid['scores'][name] = compute_frechet_distance(*stats, *ref_stats)
+		fid['stats'][name] = stats
+	print('FID-rec: {:.2f}'.format(fid['scores'][name]))
+
+	# hyb
+	name = 'hyb'
+	if name not in fid['scores']:
+		util.set_seed(0)
+		loader = None
+
+		def _generate(N):
+			nonlocal loader
+			X, loader = gen_batch(dataset, loader=loader, shuffle=True, N=N, ret_loader=True)
+			return gen_target(model, X=X, hybrid=True)
+
+		stats = compute_inception_stat(_generate, inception=inception, pbar=tqdm, n_samples=n_samples)
+
+		fid['scores'][name] = compute_frechet_distance(*stats, *ref_stats)
+		fid['stats'][name] = stats
+	print('FID-hybrid: {:.2f}'.format(fid['scores'][name]))
+
+	# prior
+	name = 'prior'
+	if name not in fid['scores']:
+		util.set_seed(0)
+
+		def _generate(N):
+			return gen_prior(model, N)
+
+		stats = compute_inception_stat(_generate, inception=inception, pbar=tqdm, n_samples=n_samples)
+
+		fid['scores'][name] = compute_frechet_distance(*stats, *ref_stats)
+		fid['stats'][name] = stats
+	print('FID-prior: {:.2f}'.format(fid['scores'][name]))
+
+	return fid
+
+
+_disent_eval_fns = {
+	'IRS': dis_eval.eval_irs,
+	    'MIG': dis_eval.eval_mig, # testing
+	    'DCI': dis_eval.eval_dci,
+	    'SAP': dis_eval.eval_sap,
+	    'ModExp': dis_eval.eval_modularity_explicitness,
+	    'Unsup': dis_eval.eval_unsupervised,
+
+	    'bVAE': dis_eval.eval_beta_vae,
+	    'FVAE': dis_eval.eval_factor_vae,
+}
+
+
+def compute_all_disentanglement(model, disent=None):
+	if disent is None:
+		disent = {}
+
+	dataset = dis_eval.shapes3d.Shapes3D()
+	repr_fn = dis_eval.representation_func(model, 'cuda')
+
+	itr = tqdm(_disent_eval_fns.items(), total=len(_disent_eval_fns))
+
+	for name, eval_fn in itr:
+		itr.set_description(name)
+		if name not in disent:
+			disent[name] = eval_fn(model='', representation_function=repr_fn, dataset=dataset, seed=0)
+		print('{}: {}'.format(name, disent[name]))
+
+	return disent
+
+
+def get_traversal_vecs(Q, steps=32, bounds=None):
+
+	N, D = Q.shape
+	S = steps
+	#
+	# dH, dW = util.calc_tiling(D)
+	#
+	# # bounds = (-2,2)
+	#
+	# save_inds = [0, 1, 2, 3]
+	#
+	# saved_walks = []
+
+	I = torch.eye(D).view(1, 1, D, D)
+
+	deltas = torch.linspace(0, 1, steps=S)
+	deltas = torch.stack([deltas] * D)  # DxS
+
+	mn, mx = (Q.min(0)[0].view(D, 1), Q.max(0)[0].view(D, 1)) if bounds is None else torch.tensor(bounds).view(2, 1,
+	                                                                                                           1).expand(
+		2, D, 1)
+	# print(mn.shape, mx.shape)
+
+	deltas *= mx - mn
+	deltas += mn
+	deltas = deltas.t().unsqueeze(0).expand(N, S, D).unsqueeze(-1)
+
+	Q = Q.unsqueeze(1).unsqueeze(-1).expand(N, S, D, D)
+
+	vecs = Q * (1 - I) + deltas * I
+	vecs = vecs.permute(0, 3, 1, 2) # NxDxSxD (batch, which dim, steps, vec)
+
+	return vecs
+
+def get_traversals(vecs, model, pbar=None): # last dim must be latent dim (model input)
+
+	*shape, D = vecs.shape
+
+	dataset = TensorDataset(vecs.view(-1,D))
+
+	loader = trn.get_loaders(dataset, batch_size=64, shuffle=False)
+
+	if pbar is not None:
+		loader = pbar(loader)
+
+	imgs = []
+
+	for Q, in loader:
+		with torch.no_grad():
+			Q = Q.to('cuda')
+			imgs.append(gen_target(model, Q=Q, hybrid=False).cpu())
+
+	imgs = torch.cat(imgs)
+
+	_, *img_shape = imgs.shape
+
+	return imgs.view(*shape,*img_shape)
+
+def add_text(imgs, deltas=None, pbar=None, delta_fmt='{:2.2f}', fontsize=12):#text_size=(0.25, 0.25)):
+
+	*shape, C, H, W = imgs.shape
+
+	assert tuple(deltas.shape) == tuple(shape), '{} vs {}'.format(shape, deltas.shape)
+
+	imgs = imgs.view(-1, C, H, W).cpu().permute(0,2,3,1).numpy()
+
+	if deltas is not None:
+
+		deltas = deltas.view(-1).cpu().numpy()
+		deltas = [delta_fmt.format(d) for d in deltas]
+
+		itr = zip(imgs, deltas)
+		if pbar is not None:
+			itr = pbar(itr)
+			itr.set_description('Adding text')
+
+		ims = []
+		for img, d in itr:
+
+			im = Image.fromarray(img.astype('uint8') * 255)
+			font = ImageFont.truetype("arial.ttf", fontsize)
+
+			img_draw = ImageDraw.Draw(im)
+			# img_draw.rectangle((70, 50, 270, 200), outline='red', fill='blue')
+			img_draw.text((5, 5), d, fill='black', font=font)
+
+			ims.append(np.array(im))
+
+		imgs = np.stack(ims)
+
+	return imgs.reshape(*shape, H, W, C)
+
 
 
 
