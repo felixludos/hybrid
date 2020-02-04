@@ -115,16 +115,24 @@ def update_checkpoint(S, *keys, overwrite=False):
 		print('Saved updated checkpoint to: {}'.format(S.ckpt_path))
 
 
-def load_fn(S, **unused):
+def load_fn(S, fast=False, **unused):
 
 	cpath = S.ckpt_path
 	A = S.A if 'A' in S else train.get_config()
 
 	A.dataset.device = 'cpu'
 
-	A, (dataset, *other), model, ckpt = train.load(path=cpath, A=A, get_model=get_model, get_data=get_data,
+	if fast:
+		print('Fast: loading only model')
+
+	out = train.load(path=cpath, A=A, get_model=get_model, get_data=None if fast else get_data,
 	                                               update_config=True,
 	                                               return_args=True, return_ckpt=True)
+
+	if fast:
+		S.A, S.model, S.ckpt = out
+		return
+	A, (dataset, *other), model, ckpt = out
 
 
 	if 'trainset' not in S:
@@ -173,36 +181,45 @@ def load_fn(S, **unused):
 			print('Skipping all precomputed values')
 
 
-	# DataLoader
 
-	A.dataset.batch_size = 16
-	common_Ws = {64: 8, 32: 4, 16: 4, 9: 3, 8: 2, 4: 2}
-	border, between = 0.02, 0.01
-	img_W = common_Ws[A.dataset.batch_size]
-	util.set_seed(0)
-	loader = train.get_loaders(dataset, batch_size=A.dataset.batch_size, num_workers=A.num_workers,
-	                           shuffle=True, drop_last=False, )
-	util.set_seed(0)
-	loader = iter(loader)
-
-	S.loader = loader
-	S.img_W = img_W
-	S.border, S.between = border, between
-
-	# Batch
-
-	batch = next(loader)
-	batch = util.to(batch, A.device)
-
-	S.batch = batch
-	S.X = batch[0]
 
 
 def run_model(S, pbar=None, **unused):
-
 	A = S.A
 	dataset = S.dataset
 	model = S.model
+
+
+	if 'loader' not in S:
+		# DataLoader
+
+		A.dataset.batch_size = 16
+
+		util.set_seed(0)
+		loader = train.get_loaders(dataset, batch_size=A.dataset.batch_size, num_workers=A.num_workers,
+		                           shuffle=True, drop_last=False, )
+		util.set_seed(0)
+		loader = iter(loader)
+
+		S.loader = loader
+
+	common_Ws = {64: 8, 32: 4, 16: 4, 9: 3, 8: 2, 4: 2}
+	border, between = 0.02, 0.01
+	img_W = common_Ws[A.dataset.batch_size]
+	S.img_W = img_W
+	S.border, S.between = border, between
+
+
+
+	if 'X' not in S:
+		# Batch
+
+		batch = next(loader)
+		batch = util.to(batch, A.device)
+
+		S.batch = batch
+		S.X = batch[0]
+
 	X = S.X
 
 	with torch.no_grad():

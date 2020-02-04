@@ -67,15 +67,15 @@ def main(argv=None):
 	if sys.gettrace() is not None:
 		print('in pycharm')
 
-		c = 'n/mpi3d'
-		c = 'n/celeba'
-		name = 'mpi3d_stats_fid.pkl'
-
-		argv = '--pbar --save-path /is/ei/fleeb/workspace/local_data/mpi3d/{} --config {}'.format(name, c).split(' ')
+		# c = 'n/mpi3d'
+		# c = 'n/celeba'
+		# name = 'mpi3d_stats_fid.pkl'
+		#
+		# argv = '--pbar --save-path /is/ei/fleeb/workspace/local_data/mpi3d/{} --config {}'.format(name, c).split(' ')
 
 		# argv.extend(['--n-samples', '100'])
 
-		return 1 # no accidental runs in debugger
+		# return 1 # no accidental runs in debugger
 
 	else:
 		print('not in pycharm')
@@ -85,45 +85,61 @@ def main(argv=None):
 	args = parser.parse_args(argv)
 
 	root = '/is/ei/fleeb/workspace/local_data/fid_stats'
-	name = 'mpi3d_real_stats_fid.pkl'
 
-	args.save_path = os.path.join(root, name)
-	print('using {}'.format(args.save_path))
+	# names = ['box', 'cyl', 'sph', 'cap', 'box-cyl', 'box-cyl-sph']
 
-	args.config = 'n/mpi3d'
-	print('using {}'.format(args.config))
+	names = ['MsPacman', 'SpaceInvaders', 'Asterix', 'Seaquest' ]
+
+	# unique = [trn.get_config('n/t/box') for _ in range(len(names))]
+
+	unique = [trn.get_config('n/atari') for _ in range(len(names))]
+
+	for u in unique:
+		u.dataset.train = None
+		u.dataset.device = 'cpu'
+
+	# unique[0].dataset.counts = [-1, 0, 0, 0]
+	# unique[1].dataset.counts = [0, -1, 0, 0]
+	# unique[2].dataset.counts = [0, 0, -1, 0]
+	# unique[3].dataset.counts = [0, 0, 0, -1]
+	# unique[4].dataset.counts = [-1, -1, 0, 0]
+	# unique[5].dataset.counts = [-1, -1, -1, 0]
+
 
 	args.pbar = True
 
-	print(args)
+	for name, u in zip(names, unique):
 
-	util.set_seed(args.seed)
-	print('Set seed: {}'.format(args.seed))
+		u.dataset.game = name
 
-	C = trn.get_config(args.config)
+		print('Running {}'.format(name))
 
-	C.begin()
-	C.dataset.train = False
-	# C.dataset.category = 'real'
+		save_path = os.path.join(root, '{}_fid_stats.pkl'.format(name))
 
-	dataset = trn.get_dataset(info=C.dataset)
-	C.abort()
+		print(save_path)
 
-	print('Loaded dataset: {}'.format(len(dataset)))
+		dataset = trn.get_dataset(info=u.dataset)
 
-	gen = Dataset_Generator(dataset)
+		print('Loaded dataset: {}'.format(len(dataset)))
+		print(dataset)
 
-	util.set_seed(args.seed)
-	print('Set seed: {}'.format(args.seed))
+		gen = Dataset_Generator(dataset)
 
-	m, s = compute_inception_stat(gen, batch_size=args.batch_size, n_samples=args.n_samples,
-	                              pbar=tqdm if args.pbar else None)
+		util.set_seed(args.seed)
+		print('Set seed: {}'.format(args.seed))
 
-	print(m.shape, s.shape)
+		m, s = compute_inception_stat(gen, batch_size=128, n_samples=50000, pbar=tqdm)
 
-	pkl.dump({'m':m, 'sigma':s}, open(args.save_path, 'wb'))
+		print(m.shape, s.shape)
 
-	print('Saved stats to {}'.format(args.save_path))
+		pkl.dump({'m': m, 'sigma': s}, open(save_path, 'wb'))
+		print('Saved stats to {}'.format(save_path))
+
+		print('-'*50)
+
+	print('All done.')
+
+
 
 
 
@@ -131,5 +147,67 @@ if __name__ == '__main__':
 	sys.exit(main())
 
 
-
-
+# def old_main(argv=None):
+# 	if sys.gettrace() is not None:
+# 		print('in pycharm')
+#
+# 		c = 'n/mpi3d'
+# 		c = 'n/celeba'
+# 		name = 'mpi3d_stats_fid.pkl'
+#
+# 		argv = '--pbar --save-path /is/ei/fleeb/workspace/local_data/mpi3d/{} --config {}'.format(name, c).split(' ')
+#
+# 		# argv.extend(['--n-samples', '100'])
+#
+# 		return 1  # no accidental runs in debugger
+#
+# 	else:
+# 		print('not in pycharm')
+#
+# 	parser = get_parser()
+# 	args = parser.parse_args(argv)
+#
+# 	root = '/is/ei/fleeb/workspace/local_data/fid_stats'
+#
+# 	names = ['box', 'cyl', 'sph', 'cap', 'box-cyl', 'box-cyl-sph']
+#
+# 	args.save_path = os.path.join(root, name)
+# 	print('using {}'.format(args.save_path))
+#
+# 	args.config = 'n/mpi3d'
+# 	print('using {}'.format(args.config))
+#
+# 	args.pbar = True
+#
+# 	print(args)
+#
+# 	util.set_seed(args.seed)
+# 	print('Set seed: {}'.format(args.seed))
+#
+# 	C = trn.get_config(args.config)
+#
+# 	C.begin()
+# 	C.dataset.train = False
+# 	# C.dataset.category = 'real'
+#
+# 	dataset = trn.get_dataset(info=C.dataset)
+# 	C.abort()
+#
+# 	print('Loaded dataset: {}'.format(len(dataset)))
+#
+# 	gen = Dataset_Generator(dataset)
+#
+# 	util.set_seed(args.seed)
+# 	print('Set seed: {}'.format(args.seed))
+#
+# 	m, s = compute_inception_stat(gen, batch_size=args.batch_size, n_samples=args.n_samples,
+# 	                              pbar=tqdm if args.pbar else None)
+#
+# 	print(m.shape, s.shape)
+#
+# 	pkl.dump({'m': m, 'sigma': s}, open(args.save_path, 'wb'))
+#
+# 	print('Saved stats to {}'.format(args.save_path))
+#
+#
+#
