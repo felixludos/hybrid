@@ -483,7 +483,7 @@ def main(argv=None):
 	# 	argv = [ 'spaceinv-wae_0064-6050849-01_200202-190020', '/is/ei/fleeb/workspace/chome/results/final']
 
 	if argv is None:
-		argv = sys.argv
+		argv = sys.argv[1:]
 
 
 	print(argv)
