@@ -35,6 +35,8 @@ import matplotlib.pyplot as plt
 from matplotlib import style
 import seaborn as sns
 
+from matplotlib import animation
+
 #from foundation.util import replicate, Cloner
 
 import evaluate as dis_eval
@@ -44,7 +46,7 @@ from run_fid import compute_inception_stat, load_inception_model, compute_freche
 
 
 def show_nums(imgs, titles=None, H=None, W=None, figsize=(6, 6),
-              reverse_rows=False, grdlines=False):
+			  reverse_rows=False, grdlines=False):
 	# if H is None and W is None:
 	# 	B = imgs.size(0)
 	# 	l = int(np.sqrt(B))
@@ -128,8 +130,8 @@ def load_fn(S, fast=False, **unused):
 		print('Fast: loading only model')
 
 	out = train.load(path=cpath, A=A, get_model=get_model, get_data=None if fast else get_data,
-	                                               update_config=True,
-	                                               return_args=True, return_ckpt=True)
+												   update_config=True,
+												   return_args=True, return_ckpt=True)
 
 	if fast:
 		S.A, S.model, S.ckpt = out
@@ -200,7 +202,7 @@ def run_model(S, pbar=None, **unused):
 
 		util.set_seed(0)
 		loader = train.get_loaders(dataset, batch_size=A.dataset.batch_size, num_workers=A.num_workers,
-		                           shuffle=True, drop_last=False, )
+								   shuffle=True, drop_last=False, )
 		util.set_seed(0)
 		loader = iter(loader)
 
@@ -260,7 +262,7 @@ def run_model(S, pbar=None, **unused):
 	batch_size = 128  # number of samples to get distribution
 	util.set_seed(0)
 	int_batch = next(iter(train.get_loaders(dataset, batch_size=batch_size, num_workers=A.num_workers,
-	                                        shuffle=True, drop_last=False, )))
+											shuffle=True, drop_last=False, )))
 	with torch.no_grad():
 		int_batch = util.to(int_batch, A.device)
 		int_X, = int_batch
@@ -368,7 +370,7 @@ def run_model(S, pbar=None, **unused):
 		assert (N//4)*4 == N, 'invalid num: {}'.format(N)
 
 		loader = train.get_loaders(dataset, batch_size=N//4, num_workers=A.num_workers,
-		                                        shuffle=True, drop_last=False, )
+												shuffle=True, drop_last=False, )
 
 		util.set_seed(0)
 
@@ -411,7 +413,7 @@ def run_model(S, pbar=None, **unused):
 		S.results['val_Q'] = full_q
 
 		print('Storing {} latent vectors'.format(len(full_q if not isinstance(full_q, distrib.Distribution)
-		                                             else full_q.loc)))
+													 else full_q.loc)))
 
 
 
@@ -438,7 +440,7 @@ def gen_target(model, X=None, Q=None, hybrid=False, ret_q=False):
 	return gen
 
 
-def _new_loader(dataset, batch_size, shuffle=False):
+def new_loader(dataset, batch_size, shuffle=False):
 	return trn.get_loaders(dataset, batch_size=batch_size, shuffle=shuffle)
 
 
@@ -448,7 +450,7 @@ def gen_batch(dataset, N=None, loader=None, shuffle=False, seed=None, ret_loader
 
 	if loader is None:
 		assert N is not None
-		loader = iter(_new_loader(dataset, batch_size=N, shuffle=shuffle))
+		loader = iter(new_loader(dataset, batch_size=N, shuffle=shuffle))
 
 	try:
 		batch = util.to(next(loader), 'cuda')
@@ -461,7 +463,7 @@ def gen_batch(dataset, N=None, loader=None, shuffle=False, seed=None, ret_loader
 				return batch[0], loader
 			return batch[0]
 
-	loader = iter(_new_loader(dataset, batch_size=N, shuffle=shuffle))
+	loader = iter(new_loader(dataset, batch_size=N, shuffle=shuffle))
 	batch = util.to(next(loader), 'cuda')
 
 	if ret_loader:
@@ -536,14 +538,14 @@ def compute_all_fid_scores(model, dataset, fid_stats_ref_path, fid=None):
 
 _disent_eval_fns = {
 	'IRS': dis_eval.eval_irs,
-	    'MIG': dis_eval.eval_mig, # testing
-	    'DCI': dis_eval.eval_dci,
-	    'SAP': dis_eval.eval_sap,
-	    'ModExp': dis_eval.eval_modularity_explicitness,
-	    'Unsup': dis_eval.eval_unsupervised,
+		'MIG': dis_eval.eval_mig, # testing
+		'DCI': dis_eval.eval_dci,
+		'SAP': dis_eval.eval_sap,
+		'ModExp': dis_eval.eval_modularity_explicitness,
+		'Unsup': dis_eval.eval_unsupervised,
 
-	    'bVAE': dis_eval.eval_beta_vae,
-	    'FVAE': dis_eval.eval_factor_vae,
+		'bVAE': dis_eval.eval_beta_vae,
+		'FVAE': dis_eval.eval_factor_vae,
 }
 
 
@@ -565,7 +567,7 @@ def compute_all_disentanglement(model, disent=None):
 	return disent
 
 
-def get_traversal_vecs(Q, steps=32, bounds=None):
+def get_traversal_vecs(Q, steps=32, bounds=None, mnmx=None):
 
 	N, D = Q.shape
 	S = steps
@@ -583,10 +585,14 @@ def get_traversal_vecs(Q, steps=32, bounds=None):
 	deltas = torch.linspace(0, 1, steps=S)
 	deltas = torch.stack([deltas] * D)  # DxS
 
-	mn, mx = (Q.min(0)[0].view(D, 1), Q.max(0)[0].view(D, 1)) if bounds is None else torch.tensor(bounds).view(2, 1,
-	                                                                                                           1).expand(
-		2, D, 1)
-	# print(mn.shape, mx.shape)
+	if mnmx is None:
+		if bounds is None:
+			mnmx = (Q.min(0)[0].view(D, 1), Q.max(0)[0].view(D, 1))
+		else:
+			mnmx = torch.ones(D)*bounds[0], torch.ones(D)*bounds[1]
+
+	mn, mx = mnmx
+	mn, mx = mn.view(D, 1), mx.view(D, 1)
 
 	deltas *= mx - mn
 	deltas += mn
@@ -623,39 +629,41 @@ def get_traversals(vecs, model, pbar=None): # last dim must be latent dim (model
 
 	return imgs.view(*shape,*img_shape)
 
-def add_text(imgs, deltas=None, pbar=None, delta_fmt='{:2.2f}', fontsize=12):#text_size=(0.25, 0.25)):
+def get_traversal_anim(frames, vals=None, text_fmt='{:2.2f}', text_size=12, scale=1, fps=20):
 
-	*shape, C, H, W = imgs.shape
+	frames = frames.permute(0,2,3,1).cpu().numpy()
+	if vals is not None:
+		vals = vals.cpu().numpy()
 
-	assert tuple(deltas.shape) == tuple(shape), '{} vs {}'.format(shape, deltas.shape)
+	H, W, C = frames[0].shape
+	asp = W/H
+	fig = plt.figure(figsize=(asp, 1), dpi=int(H*scale),)
 
-	imgs = imgs.view(-1, C, H, W).cpu().permute(0,2,3,1).numpy()
+	ax = plt.axes([0, 0, 1, 1], frameon=False)
+	ax.get_xaxis().set_visible(False)
+	ax.get_yaxis().set_visible(False)
+	plt.autoscale(tight=True)
 
-	if deltas is not None:
+	im = plt.imshow(frames[0])
+	# plt.axis('off')
+	# plt.tight_layout()
+	if vals is not None:
+		txt = plt.text(5,text_size, text_fmt.format(vals[0]), size=text_size)
+	pass
 
-		deltas = deltas.view(-1).cpu().numpy()
-		deltas = [delta_fmt.format(d) for d in deltas]
+	plt.close()
 
-		itr = zip(imgs, deltas)
-		if pbar is not None:
-			itr = pbar(itr)
-			itr.set_description('Adding text')
+	def init():
+		im.set_data(frames[0])
+		txt.set_text(text_fmt.format(vals[0]))
 
-		ims = []
-		for img, d in itr:
+	def animate(i):
+		im.set_data(frames[i])
+		txt.set_text(text_fmt.format(vals[i]))
+		return im
 
-			im = Image.fromarray(img.astype('uint8') * 255)
-			font = ImageFont.truetype("arial.ttf", fontsize)
-
-			img_draw = ImageDraw.Draw(im)
-			# img_draw.rectangle((70, 50, 270, 200), outline='red', fill='blue')
-			img_draw.text((5, 5), d, fill='black', font=font)
-
-			ims.append(np.array(im))
-
-		imgs = np.stack(ims)
-
-	return imgs.reshape(*shape, H, W, C)
+	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(frames), interval=1000//fps)
+	return anim
 
 
 
@@ -670,7 +678,7 @@ def viz_originals(S, **unused):
 	# plt.tight_layout()
 	border, between = 0.02, 0.01
 	plt.subplots_adjust(wspace=between, hspace=between,
-	                    left=border, right=1 - border, bottom=border, top=1 - border)
+						left=border, right=1 - border, bottom=border, top=1 - border)
 
 	return fig,
 
@@ -682,7 +690,7 @@ def viz_reconstructions(S, **unused):
 
 	fig = show_nums(rec, figsize=(9, 9), W=img_W)
 	plt.subplots_adjust(wspace=between, hspace=between,
-	                    left=border, right=1 - border, bottom=border, top=1 - border)
+						left=border, right=1 - border, bottom=border, top=1 - border)
 
 	return fig,
 
@@ -694,7 +702,7 @@ def viz_hybrids(S, **unused):
 
 	fig = show_nums(hyb, figsize=(9, 9), W=img_W)
 	plt.subplots_adjust(wspace=between, hspace=between,
-	                    left=border, right=1 - border, bottom=border, top=1 - border)
+						left=border, right=1 - border, bottom=border, top=1 - border)
 
 	return fig,
 
@@ -705,7 +713,7 @@ def viz_generated(S, **unused):
 
 	fig = show_nums(gen, figsize=(9, 9), W=img_W)
 	plt.subplots_adjust(wspace=between, hspace=between,
-	                    left=border, right=1 - border, bottom=border, top=1 - border)
+						left=border, right=1 - border, bottom=border, top=1 - border)
 
 	return fig,
 
@@ -757,8 +765,8 @@ def viz_latent(S, **unused):
 		inner = 'box'
 
 		sns.violinplot(x='x', y='y', hue=hue,
-		               data=df, split=split, color=color, palette=palette,
-		               scale="count", inner=inner)
+					   data=df, split=split, color=color, palette=palette,
+					   scale="count", inner=inner)
 		plt.title('Distributions of Latent Dimensions')
 		plt.xlabel('Dimension')
 		plt.ylabel('Values')
@@ -778,8 +786,8 @@ def viz_latent(S, **unused):
 		palette = None
 
 		sns.violinplot(x='x', y='y', hue=hue,
-		               data=df, split=split, color=color, palette=palette,
-		               scale="count", inner=inner, gridsize=100, )
+					   data=df, split=split, color=color, palette=palette,
+					   scale="count", inner=inner, gridsize=100, )
 		if 'lim_y' in S:
 			plt.ylim(-S.lim_y, S.lim_y)
 		plt.title('Distributions of Latent Dimensions')
@@ -821,8 +829,8 @@ def viz_interventions(S, **unused):
 
 	fig, ax = plt.subplots(figsize=(9, 3))
 	sns.violinplot(x='x', y='y', hue=hue,
-	               data=df, split=split, color=color, palette=palette,
-	               scale="count", inner=inner, gridsize=100)
+				   data=df, split=split, color=color, palette=palette,
+				   scale="count", inner=inner, gridsize=100)
 	plt.title('Intervention Effect on Image')
 	plt.xlabel('Dimension')
 
@@ -997,24 +1005,24 @@ def make_dis_eval(eval_fn):
 class Hybrid_Controller(train.Run_Manager):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, load_fn=load_fn, run_model_fn=run_model,
-		                 eval_fns=OrderedDict({
+						 eval_fns=OrderedDict({
 
-			                 'FID-prior': make_fid_fn('prior', fid_type='full'),
-			                 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
-			                 'FID-rec': make_fid_fn('rec', fid_type='full'),
+							 'FID-prior': make_fid_fn('prior', fid_type='full'),
+							 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
+							 'FID-rec': make_fid_fn('rec', fid_type='full'),
 
-			                 'IRS': make_dis_eval(dis_eval.eval_irs),
-			                 'MIG': make_dis_eval(dis_eval.eval_mig),
-			                 'DCI': make_dis_eval(dis_eval.eval_dci),
+							 'IRS': make_dis_eval(dis_eval.eval_irs),
+							 'MIG': make_dis_eval(dis_eval.eval_mig),
+							 'DCI': make_dis_eval(dis_eval.eval_dci),
 
-			                 'SAP': make_dis_eval(dis_eval.eval_sap),
-			                 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
-			                 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+							 'SAP': make_dis_eval(dis_eval.eval_sap),
+							 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+							 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
 
 							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
-			                 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
-		                 }),
-		                 viz_fns=OrderedDict({
+							 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
+						 }),
+						 viz_fns=OrderedDict({
 							'original': viz_originals,
 							'recs': viz_reconstructions,
 							'gens': viz_generated,

@@ -51,12 +51,14 @@ from tqdm import tqdm
 
 import pickle
 
-from analyze import *
+
 
 import evaluate as dis_eval
 from hybrid import get_model, get_data
 
 from run_fid import compute_inception_stat, load_inception_model, compute_frechet_distance
+
+from analyze import *
 
 # from tqdm import tqdm_notebook as tqdm
 
@@ -238,7 +240,7 @@ def _full_analyze(run, save_dir):
 		batch_size = S.batch_size
 
 		util.set_seed(1)
-		loader = _new_loader(dataset, batch_size=batch_size, shuffle=True)
+		loader = new_loader(dataset, batch_size=batch_size, shuffle=True)
 
 		loader = tqdm(loader)
 		loader.set_description('Evaluating rec error')
