@@ -511,6 +511,8 @@ def main(argv=None):
 
 	_full_analyze(run, save_dir)
 
+	print('Evaluation complete!')
+
 
 if __name__ == '__main__':
 	sys.exit(main())
