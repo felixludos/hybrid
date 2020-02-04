@@ -479,8 +479,8 @@ def _full_analyze(run, save_dir):
 
 def main(argv=None):
 
-	if sys.gettrace() is not None:
-		argv = [ 'spaceinv-wae_0064-6050849-01_200202-190020', '/is/ei/fleeb/workspace/chome/results/final']
+	# if sys.gettrace() is not None:
+	# 	argv = [ 'spaceinv-wae_0064-6050849-01_200202-190020', '/is/ei/fleeb/workspace/chome/results/final']
 
 	if argv is None:
 		argv = sys.argv
@@ -496,8 +496,8 @@ def main(argv=None):
 	print('run: {}'.format(run_name))
 	print('save_dir: {}'.format(save_dir))
 
-	os.environ['FOUNDATION_SAVE_DIR'] = '/is/ei/fleeb/workspace/chome/trained_nets' # testing
-	os.environ['FOUNDATION_DATA_DIR'] = '/is/ei/fleeb/workspace/chome/local_data'
+	# os.environ['FOUNDATION_SAVE_DIR'] = '/is/ei/fleeb/workspace/chome/trained_nets' # testing
+	# os.environ['FOUNDATION_DATA_DIR'] = '/is/ei/fleeb/workspace/chome/local_data'
 
 
 	M = Hybrid_Controller().filter_strs('!test')
