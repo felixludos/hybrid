@@ -648,174 +648,89 @@ def get_traversal_anim(frames, vals=None, text_fmt='{:2.2f}', text_size=12, scal
 	# plt.axis('off')
 	# plt.tight_layout()
 	if vals is not None:
-		txt = plt.text(5,text_size, text_fmt.format(vals[0]), size=text_size)
+		txt = plt.text(5,text_size*H//64, text_fmt.format(vals[0]), size=text_size)
 	pass
 
 	plt.close()
 
 	def init():
 		im.set_data(frames[0])
-		txt.set_text(text_fmt.format(vals[0]))
+		if vals is not None:
+			txt.set_text(text_fmt.format(vals[0]))
 
 	def animate(i):
 		im.set_data(frames[i])
-		txt.set_text(text_fmt.format(vals[i]))
+		if vals is not None:
+			txt.set_text(text_fmt.format(vals[i]))
 		return im
 
 	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(frames), interval=1000//fps)
 	return anim
 
 
+def viz_latent(Q, figax=None, figsize=(9, 3), lim_y=None):
+	Xs = np.arange(Q.shape[-1]) + 1
+	inds = np.stack([Xs] * Q.shape[0])
+
+	vals = Q.cpu().numpy()
+	df = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
+
+	if figax is None:
+		figax = plt.subplots(figsize=figsize)
+	fig, ax = figax
+
+	# plt.figure(fig.num)
+	plt.sca(ax)
+
+	hue = None
+	split = False
+	color = 'C0'
+	inner = 'box'
+	palette = None
+
+	sns.violinplot(x='x', y='y', hue=hue,
+	               data=df, split=split, color=color, palette=palette,
+	               scale="count", inner=inner, gridsize=100, )
+	if lim_y is not None:
+		plt.ylim(-lim_y, lim_y)
+	plt.title('Distributions of Latent Dimensions')
+	plt.xlabel('Dimension')
+	plt.ylabel('Values')
+	plt.tight_layout()
+	return fig, ax
 
 
-def viz_originals(S, **unused):
+def compute_diffs_old(walks, dsteps=10):
+	'''
+	computes the L2 distance in pixel space between an image and the image where
+	a single latent dimension is perturbed by approximately half of the range
+	of that latent dim
+	'''
 
-	X = S.X
-	img_W = S.img_W
+	B, D, S, C, H, W = walks.shape
 
-	fig = show_nums(X, figsize=(9, 9), H=img_W)
-	# fig.suptitle("originals", fontsize=14)
-	# plt.tight_layout()
-	border, between = 0.02, 0.01
-	plt.subplots_adjust(wspace=between, hspace=between,
-						left=border, right=1 - border, bottom=border, top=1 - border)
-
-	return fig,
-
-def viz_reconstructions(S, **unused):
-
-	rec = S.rec
-	img_W = S.img_W
-	border, between = S.border, S.between
-
-	fig = show_nums(rec, figsize=(9, 9), W=img_W)
-	plt.subplots_adjust(wspace=between, hspace=between,
-						left=border, right=1 - border, bottom=border, top=1 - border)
-
-	return fig,
-
-def viz_hybrids(S, **unused):
-
-	hyb = S.hyb
-	img_W = S.img_W
-	border, between = S.border, S.between
-
-	fig = show_nums(hyb, figsize=(9, 9), W=img_W)
-	plt.subplots_adjust(wspace=between, hspace=between,
-						left=border, right=1 - border, bottom=border, top=1 - border)
-
-	return fig,
-
-def viz_generated(S, **unused):
-	gen = S.gen
-	img_W = S.img_W
-	border, between = S.border, S.between
-
-	fig = show_nums(gen, figsize=(9, 9), W=img_W)
-	plt.subplots_adjust(wspace=between, hspace=between,
-						left=border, right=1 - border, bottom=border, top=1 - border)
-
-	return fig,
-
-def viz_latent(S, **unused):
-	# if dis_q is None:
-
-	assert 'int_q' in S
-
-	if 'full_q' in S and S.full_q is not None:
-		int_q = S.full_q
-		if isinstance(S.full_q, distrib.Distribution):
-			dis_int_q = S.full_q
-		else:
-			dis_int_q = None
-
-	else:
-
-		int_q = S.int_q
-		dis_int_q = S.dis_int_q
-
-	if dis_int_q is not None:
-		int_q = int_q.loc
-		dis_int_q = None
-
-	# print(int_q.shape)
-
-	Xs = np.arange(int_q.shape[-1]) + 1
-	inds = np.stack([Xs] * int_q.shape[0])
-
-	vals = int_q.cpu().numpy()
-	df1 = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
-
-	if dis_int_q is not None:
-
-		fig, ax = plt.subplots(figsize=(9, 3))
-
-		df1['moment'] = 'mu'
-
-		vals = dis_int_q.scale.log().cpu().numpy()
-		df2 = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
-		df2['moment'] = 'log(sigma)'
-
-		df = pd.concat([df1, df2])
-
-		hue = 'moment'
-		split = False
-		color = None
-		palette = 'muted'
-		inner = 'box'
-
-		sns.violinplot(x='x', y='y', hue=hue,
-					   data=df, split=split, color=color, palette=palette,
-					   scale="count", inner=inner)
-		plt.title('Distributions of Latent Dimensions')
-		plt.xlabel('Dimension')
-		plt.ylabel('Values')
-		plt.legend(loc=8)
-		plt.tight_layout()
-
-	else:
-
-		fig, ax = plt.subplots(figsize=(9, 3))
-
-		df = df1
-
-		hue = None
-		split = False
-		color = 'C0'
-		inner = 'box'
-		palette = None
-
-		sns.violinplot(x='x', y='y', hue=hue,
-					   data=df, split=split, color=color, palette=palette,
-					   scale="count", inner=inner, gridsize=100, )
-		if 'lim_y' in S:
-			plt.ylim(-S.lim_y, S.lim_y)
-		plt.title('Distributions of Latent Dimensions')
-		plt.xlabel('Dimension')
-		plt.ylabel('Values')
-		plt.tight_layout()
+	diffs = (walks[:, :, dsteps:] - walks[:, :, :-dsteps]).pow(2)
+	diffs = diffs.view(B, D, (S - dsteps) * C * H * W).mean(-1) * C
+	return diffs
 
 
-	return fig,
+def compute_diffs(walks, dsteps=10):
+	'''
+	computes the Linf distance in pixel space between an image and the image where
+	a single latent dimension is perturbed by approximately half of the range
+	of that latent dim
+	'''
+
+	B, D, S, C, H, W = walks.shape
+
+	diffs = (walks[:, :, dsteps:] - walks[:, :, :-dsteps]).abs().max(-3)[0]
+	diffs = diffs.view(B, D, (S - dsteps) * H * W).mean(-1)
+	return diffs
 
 
-def viz_interventions(S, **unused):
+def viz_interventions(dists, figax=None, figsize=(9, 3), color='C2'):
 
-	A = S.A
-	X = S.X
-	q = S.q
-	model = S.model
-	img_W = S.img_W
-	dataset = S.dataset
-
-	int_q = S.int_q
-
-	all_diffs = S.all_diffs
-
-
-	# Intervention Effect
-
-	vals = all_diffs.cpu().numpy()
+	vals = dists.cpu().numpy()
 	Xs = np.arange(vals.shape[-1]) + 1
 	inds = np.stack([Xs] * vals.shape[0])
 	df = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
@@ -823,29 +738,205 @@ def viz_interventions(S, **unused):
 
 	hue = None
 	split = False
-	color = 'C2'
+	# color = 'C2'
 	inner = 'box'
 	palette = None
 
-	fig, ax = plt.subplots(figsize=(9, 3))
+	if figax is None:
+		figax = plt.subplots(figsize=figsize)
+	fig, ax = figax
+	plt.sca(ax)
 	sns.violinplot(x='x', y='y', hue=hue,
-				   data=df, split=split, color=color, palette=palette,
-				   scale="count", inner=inner, gridsize=100)
+	               data=df, split=split, color=color, palette=palette,
+	               scale="count", inner=inner, gridsize=100, cut=0)
 	plt.title('Intervention Effect on Image')
 	plt.xlabel('Dimension')
-
 	plt.ylabel('Effect')
 	plt.tight_layout()
 
-	return fig,
 
-def viz_traversals(S, **unused):
+	return fig, ax
 
-	walks = S.saved_walks
 
-	anims = [util.Video(walk) for walk in walks]
+#
+# def viz_originals(S, **unused):
+#
+# 	X = S.X
+# 	img_W = S.img_W
+#
+# 	fig = show_nums(X, figsize=(9, 9), H=img_W)
+# 	# fig.suptitle("originals", fontsize=14)
+# 	# plt.tight_layout()
+# 	border, between = 0.02, 0.01
+# 	plt.subplots_adjust(wspace=between, hspace=between,
+# 						left=border, right=1 - border, bottom=border, top=1 - border)
+#
+# 	return fig,
+#
+# def viz_reconstructions(S, **unused):
+#
+# 	rec = S.rec
+# 	img_W = S.img_W
+# 	border, between = S.border, S.between
+#
+# 	fig = show_nums(rec, figsize=(9, 9), W=img_W)
+# 	plt.subplots_adjust(wspace=between, hspace=between,
+# 						left=border, right=1 - border, bottom=border, top=1 - border)
+#
+# 	return fig,
+#
+# def viz_hybrids(S, **unused):
+#
+# 	hyb = S.hyb
+# 	img_W = S.img_W
+# 	border, between = S.border, S.between
+#
+# 	fig = show_nums(hyb, figsize=(9, 9), W=img_W)
+# 	plt.subplots_adjust(wspace=between, hspace=between,
+# 						left=border, right=1 - border, bottom=border, top=1 - border)
+#
+# 	return fig,
+#
+# def viz_generated(S, **unused):
+# 	gen = S.gen
+# 	img_W = S.img_W
+# 	border, between = S.border, S.between
+#
+# 	fig = show_nums(gen, figsize=(9, 9), W=img_W)
+# 	plt.subplots_adjust(wspace=between, hspace=between,
+# 						left=border, right=1 - border, bottom=border, top=1 - border)
+#
+# 	return fig,
+#
+# def viz_latent(S, **unused):
+# 	# if dis_q is None:
+#
+# 	assert 'int_q' in S
+#
+# 	if 'full_q' in S and S.full_q is not None:
+# 		int_q = S.full_q
+# 		if isinstance(S.full_q, distrib.Distribution):
+# 			dis_int_q = S.full_q
+# 		else:
+# 			dis_int_q = None
+#
+# 	else:
+#
+# 		int_q = S.int_q
+# 		dis_int_q = S.dis_int_q
+#
+# 	if dis_int_q is not None:
+# 		int_q = int_q.loc
+# 		dis_int_q = None
+#
+# 	# print(int_q.shape)
+#
+# 	Xs = np.arange(int_q.shape[-1]) + 1
+# 	inds = np.stack([Xs] * int_q.shape[0])
+#
+# 	vals = int_q.cpu().numpy()
+# 	df1 = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
+#
+# 	if dis_int_q is not None:
+#
+# 		fig, ax = plt.subplots(figsize=(9, 3))
+#
+# 		df1['moment'] = 'mu'
+#
+# 		vals = dis_int_q.scale.log().cpu().numpy()
+# 		df2 = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
+# 		df2['moment'] = 'log(sigma)'
+#
+# 		df = pd.concat([df1, df2])
+#
+# 		hue = 'moment'
+# 		split = False
+# 		color = None
+# 		palette = 'muted'
+# 		inner = 'box'
+#
+# 		sns.violinplot(x='x', y='y', hue=hue,
+# 					   data=df, split=split, color=color, palette=palette,
+# 					   scale="count", inner=inner)
+# 		plt.title('Distributions of Latent Dimensions')
+# 		plt.xlabel('Dimension')
+# 		plt.ylabel('Values')
+# 		plt.legend(loc=8)
+# 		plt.tight_layout()
+#
+# 	else:
+#
+# 		fig, ax = plt.subplots(figsize=(9, 3))
+#
+# 		df = df1
+#
+# 		hue = None
+# 		split = False
+# 		color = 'C0'
+# 		inner = 'box'
+# 		palette = None
+#
+# 		sns.violinplot(x='x', y='y', hue=hue,
+# 					   data=df, split=split, color=color, palette=palette,
+# 					   scale="count", inner=inner, gridsize=100, )
+# 		if 'lim_y' in S:
+# 			plt.ylim(-S.lim_y, S.lim_y)
+# 		plt.title('Distributions of Latent Dimensions')
+# 		plt.xlabel('Dimension')
+# 		plt.ylabel('Values')
+# 		plt.tight_layout()
+#
+#
+# 	return fig,
 
-	return anims
+#
+# def viz_interventions(S, **unused):
+#
+# 	A = S.A
+# 	X = S.X
+# 	q = S.q
+# 	model = S.model
+# 	img_W = S.img_W
+# 	dataset = S.dataset
+#
+# 	int_q = S.int_q
+#
+# 	all_diffs = S.all_diffs
+#
+#
+# 	# Intervention Effect
+#
+# 	vals = all_diffs.cpu().numpy()
+# 	Xs = np.arange(vals.shape[-1]) + 1
+# 	inds = np.stack([Xs] * vals.shape[0])
+# 	df = pd.DataFrame({'x': inds.reshape(-1), 'y': vals.reshape(-1)})
+# 	# df['moment']='log(sigma)'
+#
+# 	hue = None
+# 	split = False
+# 	color = 'C2'
+# 	inner = 'box'
+# 	palette = None
+#
+# 	fig, ax = plt.subplots(figsize=(9, 3))
+# 	sns.violinplot(x='x', y='y', hue=hue,
+# 				   data=df, split=split, color=color, palette=palette,
+# 				   scale="count", inner=inner, gridsize=100)
+# 	plt.title('Intervention Effect on Image')
+# 	plt.xlabel('Dimension')
+#
+# 	plt.ylabel('Effect')
+# 	plt.tight_layout()
+#
+# 	return fig,
+#
+# def viz_traversals(S, **unused):
+#
+# 	walks = S.saved_walks
+#
+# 	anims = [util.Video(walk) for walk in walks]
+#
+# 	return anims
 
 fid_types = {
 	'train': '3dshapes_stats_fid_train.pkl',
@@ -1004,32 +1095,32 @@ def make_dis_eval(eval_fn):
 
 class Hybrid_Controller(train.Run_Manager):
 	def __init__(self, *args, **kwargs):
-		super().__init__(*args, load_fn=load_fn, run_model_fn=run_model,
-						 eval_fns=OrderedDict({
-
-							 'FID-prior': make_fid_fn('prior', fid_type='full'),
-							 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
-							 'FID-rec': make_fid_fn('rec', fid_type='full'),
-
-							 'IRS': make_dis_eval(dis_eval.eval_irs),
-							 'MIG': make_dis_eval(dis_eval.eval_mig),
-							 'DCI': make_dis_eval(dis_eval.eval_dci),
-
-							 'SAP': make_dis_eval(dis_eval.eval_sap),
-							 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
-							 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
-
-							 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
-							 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
-						 }),
-						 viz_fns=OrderedDict({
-							'original': viz_originals,
-							'recs': viz_reconstructions,
-							'gens': viz_generated,
-							'hybrid': viz_hybrids,
-							'latent': viz_latent,
-							'effects': viz_interventions,
-							'traversals': viz_traversals,
-						}), **kwargs)
+		super().__init__(*args, load_fn=load_fn, run_model_fn=run_model, **kwargs)
+						#  eval_fns=OrderedDict({
+						#
+						# 	 'FID-prior': make_fid_fn('prior', fid_type='full'),
+						# 	 'FID-hyb': make_fid_fn('hybrid', fid_type='full'),
+						# 	 'FID-rec': make_fid_fn('rec', fid_type='full'),
+						#
+						# 	 'IRS': make_dis_eval(dis_eval.eval_irs),
+						# 	 'MIG': make_dis_eval(dis_eval.eval_mig),
+						# 	 'DCI': make_dis_eval(dis_eval.eval_dci),
+						#
+						# 	 'SAP': make_dis_eval(dis_eval.eval_sap),
+						# 	 'ModExp': make_dis_eval(dis_eval.eval_modularity_explicitness),
+						# 	 'Unsup': make_dis_eval(dis_eval.eval_unsupervised),
+						#
+						# 	 # 'bVAE': make_dis_eval(dis_eval.eval_beta_vae),
+						# 	 # 'FVAE': make_dis_eval(dis_eval.eval_factor_vae),
+						#  }),
+						#  viz_fns=OrderedDict({
+						# 	'original': viz_originals,
+						# 	'recs': viz_reconstructions,
+						# 	'gens': viz_generated,
+						# 	'hybrid': viz_hybrids,
+						# 	'latent': viz_latent,
+						# 	'effects': viz_interventions,
+						# 	'traversals': viz_traversals,
+						# }), **kwargs)
 
 
