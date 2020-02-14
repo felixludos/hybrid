@@ -299,8 +299,10 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		return out
 
 
-	def regularize(self, q):
-		return util.MMD(self.sample_prior(q.size(0)), q)
+	def regularize(self, q, p=None):
+		if p is None:
+			p = self.sample_prior(q.size(0))
+		return util.MMD(p, q)
 
 	def hybridize(self, q):
 		p = self.sample_prior(q.size(0))
@@ -492,15 +494,21 @@ class Slice_WPP(Wasserstein_PP):
 		if N is None:
 			N = self.slices
 
-		return F.normalize(torch.randn(N, self.latent_dim, device=self.device))
+		return torch.randn(N, self.latent_dim, device=self.device)
 
-	def regularize(self, q):
+	def regularize(self, q, p=None):
 
 		s = self.sample_slices()
 
+		qd = F.cosine_similarity(q.unsqueeze(1), s.unsqueeze(0), dim=-1)
+		qd = qd.sort(0)[0]
 
+		if p is None:
+			p = self.sample_prior(q.size(0))
+		pd = F.cosine_similarity(p.unsqueeze(1), s.unsqueeze(0), dim=-1)
+		pd = pd.sort(0)[0]
 
-		pass
+		return (qd - pd).abs().mean()
 
 
 @fd.Component('fvpp')

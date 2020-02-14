@@ -1,0 +1,10 @@
+parents: ['basics']
+
+model:
+    _type: 'swpp'
+
+    reg_prior: 0.5
+
+
+info:
+    model_type: 'fwae'
