@@ -1,722 +1,1282 @@
-%%%%%%%% ICML 2020 EXAMPLE LATEX SUBMISSION FILE %%%%%%%%%%%%%%%%%
-
 \documentclass{article}
+\usepackage[utf8]{inputenc}
 
-% Recommended, but optional, packages for figures and better typesetting:
+\usepackage{geometry}
+\geometry{a4paper, margin=0.5in}
+
+\maxdeadcycles=200
 \usepackage{microtype}
 \usepackage{graphicx}
 \usepackage{subfigure}
 \usepackage{booktabs} % for professional tables
 
 
-% hyperref makes hyperlinks in the resulting PDF.
-% If your build breaks (sometimes temporarily if a hyperlink spans a page)
-% please comment out the following usepackage line and replace
-% \usepackage{icml2020} with \usepackage[nohyperref]{icml2020} above.
+\usepackage{natbib}
 \usepackage{hyperref}
 \usepackage{amssymb}
-\usepackage{bbold}
+% \usepackage{bbold}
 \usepackage{xcolor}
+\usepackage{enumitem}
 
-% Attempt to make hyperref and algorithmic work together better:
-\newcommand{\theHalgorithm}{\arabic{algorithm}}
-\newcommand{\eq}[1]{(\protect\ref{#1})}
-\newcommand{\E}{\mathbb{E}}
+\newcommand{\dropin}[0]{\textit{Drop-in}}
 
-\newcommand{\C}[1]{\mathcal{#1}}
-\newcommand{\B}[1]{\mathbf{#1}}
-\newcommand{\pa}{\B{pa}}
-\newcommand{\PA}{\B{PA}}
-\newcommand{\R}{\mathbb{R}}    %reals
-\newcommand{\N}{\mathbb{N}}    %integer
-
-\newcommand{\bernhard}[1]{{ \bf\em\large B: #1}}
-\newcommand{\red}{\color{red}}
-% Use the following line for the initial blind version submitted for review:
-\usepackage{icml2020}
-
-% If accepted, instead use the following line for the camera-ready submission:
-%\usepackage[accepted]{icml2020}
-
-% The \icmltitle you define below is probably too long as a header.
-% Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Deep Generative Modeling with Interventions for Transfer}
-
-\newcommand{\dropin}[0]{\textit{Drop-in }}
+\title{Supplement to ICML 2020 submission ID 5825}
+% \author{Felix Leeb, Yashas Annadani, Stefan Bauer, and Bernard Schölkopf}
+\date{February 2020}
 
 \begin{document}
 
-\twocolumn[
-\icmltitle{Structuring Deep Generative Models with Interventions for Transfer}
-
-% It is OKAY to include author information, even for blind
-% submissions: the style file will automatically remove it for you
-% unless you've provided the [accepted] option to the icml2020
-% package.
-
-% List of affiliations: The first argument should be a (short)
-% identifier you will use later to specify author affiliations
-% Academic affiliations should list Department, University, City, Region, Country
-% Industry affiliations should list Company, City, Region, Country
-
-% You can specify symbols, otherwise they are numbered in order.
-% Ideally, you should not use this facility. Affiliations will be numbered
-% in order of appearance and this is the preferred way.
-\icmlsetsymbol{equal}{*}
-
-\begin{icmlauthorlist}
-\icmlauthor{Felix Leeb}{mpi}
-\icmlauthor{Yashas Annadani}{eth}
-\icmlauthor{Stefan Bauer}{mpi}
-\icmlauthor{Bernard Schölkopf}{mpi}
-\end{icmlauthorlist}
-
-\icmlaffiliation{mpi}{Max Planck Institute for Intelligent Systems, Tübingen, Germany}
-\icmlaffiliation{eth}{Department of Electrical Engineering and Information Technology at ETH, Zürich, Switzerland}
-
-\icmlcorrespondingauthor{Felix Leeb}{fleeb@tuebingen.mpg.de}
-% \icmlcorrespondingauthor{Eee Pppp}{ep@eden.co.uk}
-
-% You may provide any keywords that you
-% find helpful for describing your paper; these are used to populate
-% the "keywords" metadata in the PDF but will not be shown in the document
-\icmlkeywords{Generative Models, Autoencoder, Representation learning, Structured latent space, Disentanglement, Deep learning}
-
-\vskip 0.3in
-]
-
-% this must go after the closing bracket ] following \twocolumn[ ...
-
-% This command actually creates the footnote in the first column
-% listing the affiliations and the copyright notice.
-% The command takes one argument, which is text to display at the start of the footnote.
-% The \icmlEqualContribution command is standard text for equal contribution.
-% Remove it (just {}) if you do not need this facility.
-
-%\printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
-\printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
-
-\begin{abstract} % step away from disentanglement, and towards structuring a latent space for transfer
-
-Many popular autoencoder-based generative modeling methods, such as Variational Autoencoders, attempt to trade-off between seeking an informative latent space, and one that matches the prior well. We propose a new kind of regularization called \dropin which gives the model more freedom to structure the latent space based on the task, without any supervision.
-Motivated by causal modeling, \dropin applies interventions in the latent space by independently resampling subspaces, and then improves the resulting generated samples adversarially using a discriminator.
-This sampling technique can be used to evaluate how tightly coupled parts of a learned representation are, which is closely related to disentanglement and self-consistency.
-With the help of this new tool, we investigate how different kinds of regularization and network architectures affect the structure of the learned latent space, including disentanglement and quality of generated samples.
-Finally, we evaluate how well the representations can integrate new out-of-distribution samples and how much other notions of disentanglement improve such transfer capabilities.
-
-
-%The resulting sampling technique applies interventions on the latent space, paving the way to fully self-supervised causal representation learning.
-
-
-\end{abstract}
-
-\section{Introduction}\label{sec:intro}
-
-An agent in a complex world is faced with limited resources. This concerns training data, i.e., we only have limited data for each individual task/domain, and thus need to find ways of pooling/re-using data. It also concerns computational resources: animals have constraints on the size of their brains, and evolutionary neuroscience knows many examples where brain regions get re-purposed. Similar constraints on size and energy apply as ML methods get embedded in (small) physical devices that may be battery-powered.
-Future AI models that robustly solve a range of problems in the real world will thus likely need to re-use components, which requires that the components be robust across tasks and environments \citep{SchJanLop16}.
-One way to do this is to employ a modular structure that mirrors a corresponding modularity in the world. If the world is modular, in the sense that different components of the world play roles across a range of environments, tasks, and settings, then it would be prudent for a model to employ corresponding modules \citep{RIMs}.\footnote{For instance, if variations in natural lighting imply that a visual environment can appear in brightness conditions spanning several orders of magnitude, then visual processing algorithms in our nervous system should employ methods that can factor out these variations, rather than for instance building separate sets of face recognizers for different lighting conditions.} The question of how to disentangle these modules or factors of variation from data has attracted significant interest in the field of generative modeling \citep{1206.5538,higgins2017beta}.
-
-Generative modeling attempts to model distributions, such as images of faces, that we would like to sample from. Real generative processes distributions usually form complicated manifolds in high dimensional spaces, making modeling and sampling challenging. One popular solution is to train an autoencoder to learn a transformation to and from the data distribution through a low dimensional latent space matching some known prior distribution, such as a standard normal. Modern variants of autoencoders include the widely used Variational Autoencoders (VAEs) \cite{KinWel13} and the more recent Wasserstein Autoencoders (WAE) \cite{tolstikhin2017wasserstein}.
-
-% {\small\em CONDENSE THIS...
-% Autoencoders have become a popular framework for generative modeling due to their versatile and stable training, while still performing very well. There is particular interest in structuring the learned representation to improve performance on generation as well as other down-stream tasks.
-
-% [generative modeling is useful]
-
-% [autoencoders have lots of nice properties - information bottleneck, fully self-supervised but labels can be integrated easily)]
-
-% [averaging due to information-prior tradeoff in latent space]
-
-% [disentanglement should help, but without any label information, disentanglement is ill-defined. however, there may]
-
-% [coupling of the latent space - connect to transfer] If the dimensions in a learned latent space are tightly coupled
-
-% [while the quality of the generated samples is not as good as GANs, the encoder allows us to use the representation for many other tasks where dealing with the original observations is too costly]
-
-% [connections to causality] paving the way to more causal representation learning}
-
-Our main contributions include:
-\begin{itemize}
-    % oppressive, heavy-handed vs forgiving,
-    \item We propose a novel regularization called \dropin, motivated by causal modeling, to structure the latent space to improve generation and disentangle factors of variation. % (less antagonistic regularization) Unlike the KL regularization in VAEs, which does penalize informative latent vectors, or WAEs the regularization is on the latent space as a whole so latent vectors can have more information, leading to better reconstruction. \dropin
-
-    \item We demonstrate that \dropin can also be used as a sampling technique to generate samples without constraining the latent space to match some predefined, arbitrary prior distribution as in VAEs or WAEs. %(new sampling technique - hybridization)
-
-    \item  We show how changes in the architecture of the generator can impose a hierarchical structure on the latent space producing a more disentangled representation, without additional regularization, and discuss how this relates to robustness with respect to interventions at various levels of a causal model. %(structure by architecture)
-
-    \item We compare our method to a set of popular baselines, as well as to several novel and improved baselines obtained by modifying classical methods. We find that while our approach improves the vanilla baselines, so do our improved baselines. However, we argue that while our improved baselines all build upon using suitable priors in the latent space, our approach is more general and can also be applied throughout a network.
-
-    \item
-   We assay whether the latent spaces learned allow the model to adapt to out-of-distribution samples. %(transfer - learning latent spaces that adapt easily, related to disentanglement (maybe fairness?))
-    % \item We investigate how well several popular, as well as novel, representation learning algorithms are able to learn latent spaces that, upon observing new samples, can be adapted without having to relearn the entire space
-
-    % \item We revisit several common methods for generative modeling for
-
-\end{itemize}
-
-% [focus less on disentanglement (as in interpretable visual features) and more on enabling interventions that still produce good samples]
-
-% [training with hybridization produces an interestingly structured latent space] [TODO: how can this structure be used]
-
-% The idea is to learn a structured latent space to disentangle it without any labels or side information. This is done by splitting the latent space into independent priors and training the generator to generate good samples using different combinations of prior samples.
-
-% This involves learning an encoder and decoder/generator reminiscent of a VAE, however there must also be a discriminative component, reminiscent of a GAN because we can't directly supervise the construction of "hybrid" samples.
-
-%
-
-
-\section{Causal Representation Learning}
-Graphical causal modeling builds on sets of random variables $X_1,\dots,X_n$ connected by a directed acyclic graph (DAG).
-Each observable is the result of an assignment
-\begin{equation}\label{eq:SA}
-X_i := f_i (\PA_i, U_i),   ~~~~ (i=1,\dots,n),
-\end{equation}
-using a deterministic function $f_i$ depending on $X_i$'s parents in the graph (denoted by $\PA_i$) and on a stochastic {\em unexplained} variable $U_i$. Since the parents determine the value of $X_i$, directed edges in the graph represent direct causation. Each function $f_i$ is deterministic, however, the unexplained noise $U_i$ ensures that the overall assignment mechanism \eq{eq:SA} can represent a general conditional distribution $p(X_i|\PA_i)$. The set of noises $U_1,\dots,U_n$ are assumed to be jointly independent. This is sometimes referred to as a condition of {\em causal sufficiency}: if they were not independent, then by Reichenbach's common cause principle, there should be a common cause that explains the dependence, hence we should include that common cause in the model \citep{Pearl2009}.
-
-The DAG along with the mechanisms \eq{eq:SA} is referred to as a Structural Causal Model (SCM) \citep{Pearl2009}.
-If we specify a (factorizing) distribution over the unexplained variables, the SCM entails a joint distribution over all $X_i$. Any possible joint distribution can be expressed this way; however, the SCM contains information that a joint distribution does not contain: it allows modeling of interventions (e.g., by setting values of $U_i$ or $X_i$) and it makes it explicit how statistical dependences between the $X_i$ are {\em generated} by mechanisms \eq{eq:SA}.
-
-Real-world observations, however, are usually not structured into meaningful causal variables and mechanisms to begin with. E.g., objects in images are high-dimensional, and it is hard to learn these variables and their causal relationships from data \citep{LopNisChiSchBot17}.
- To combine structural causal modeling \eq{eq:SA} and representation learning, we would need to embed an SCM into a larger machine learning model whose inputs and outputs may be high-dimensional and unstructured, but whose inner workings are at least partly governed by an SCM \cite{suter2018robustly,1911.10500}.
-One way to do so is to realize the unexplained variables as (latent) noise variables in a generative model. Note that there is a natural connection between SCMs and modern generative models: they both use the so-called {\em reparametrization trick} \citep{KinWel13}, consisting of modeling desired randomness as an (exogenous) input to the model rather than an intrinsic component.
-
-In line with the \emph{Independent Causal Mechanisms (ICM)} principle \citep{PetJanSch17}, each SCM \eq{eq:SA} admits a representation
-\begin{equation}\label{eq:cf2}
-p(S_1,\dots,S_n) = \prod_{i=1}^n  p(S_i \mid \PA_i)
-\end{equation}
-whose conditionals $ p(S_i \mid \PA_i)$ are independently manipulable and largely invariant across related problems (we might thus refer to \eq{eq:cf2} as ``disentangled''). Suppose we seek to reconstruct such a representation from data, without a prior knowledge of what are the causal variables $S_i$. Instead, we are given (high-dimensional) $X=(X_1,\dots,X_d)$ (below, we think of $X$ as an image with pixels $X_1,\dots,X_d$), from which we should construct the causal variables $S_1,\dots,S_n$ ($n\ll d$) as well as mechanisms, cf.\ \eq{eq:SA},
-\begin{equation}
-S_i := f_i (\PA_i, U_i),   ~~~~ (i=1,\dots,n),
-\end{equation}
-modeling the causal relationships among the $S_i$.
-
-To this end, as a first step, we can use an {\bf encoder} $f_{enc}:\R^d \to \R^n$ taking $X$ to a latent ``bottleneck'' representation comprising the unexplained noise variables  $U=(U_1,\dots,U_n)$.
-The next step is the mapping $f(U)$ determined by the structural assignments $f_1,\dots,f_n$. To see that this is the general form of an SCM \eq{eq:SA}, note that for a DAG, recursive substitution of structural assignments eventually reduces them to functions of only the unexplained variables.
-
-Finally, we apply a {\bf decoder} $f_{dec}:\R^n \to \R^d$. The system can be trained using reconstruction error to satisfy $f_{dec} \circ f \circ f_{enc}\approx id$ on the observed images.
-%
-If the causal graph is known, the topology of a neural network implementing $f$ can be fixed accordingly; if not, the neural network decoder learns the composition $\tilde{f_{dec}} = f_{dec}\circ f$. Below, we assume that we do not know $f$, and thus only learn an autoencoder $\tilde{f_{dec}}\circ f_{enc}$, where the causal graph effectively becomes an unspecified part of $\tilde{f_{dec}}$.
-%By choosing the network topology, one can ensure that each noise should only feed into {\em one} subsequent unit (using connections skipping layers), and that all DAGs can be learnt.
-
-In line with \eq{eq:SA}, we should make the $U_i$ statistically independent, and in line with \eq{eq:cf2}, we should make the mechanisms independent.
-%since $\tilde{p}\circ q \approx id$, the latent noise $U$ generates images $\tilde{p}(U)$.
-This can be done by ensuring that they can be independently intervened upon: if we manipulate some of them, they should thus still produce valid images, which we encourgage using the discriminator of a generative adversarial network \citep{GAN}.
-
-While we can manipulate variables anywhere in a deep model, we mostly focus on the special case of intervening upon the latent noise variables. %\footnote{Interventions on the $S_i$ can be done accordingly, including the case of decoders without encoder (e.g., GANs).}
-One way to intervene is to replace noise variables with the corresponding values computed from other input images, a procedure that has been referred to as hybridization by \citet{1812.03253}. In the extreme case, we can hybridize latent vectors where {\em each} component is computed from another training example. Note that for an IID training set, such latent vectors would have statistically independent components by construction.
-%
-%, and the latter can, for an i.i.d.\ training set $x^1,\dots,x^m$, be achieved by constructing $\tilde(U)$ by picking each entry of the latent vector from another randomly chosen $q(x^i)$, rather than using a single $U=q(X)$ (inspired by \citet{1812.03253}, we refer to this as hybridization).
-Since the decoder then needs to generate a valid image for a latent vector $U^h$ whose components are independent, it cannot rely on statistical dependences between its components. The encoder is thus also not encouraged to produce such dependences for real input images.
-%\item
-%{\em Independence of unexplained noises:} the $d$ components of $U=p(X)$ should be approximately independent. This can achieved by ensuring that the decoder $p$ produces realistic data even if we replace a ``real'' latent vector by one that is synthetically constructed to contain independent components. The former can be measured by a GAN discriminator \citep{GAN}, and the latter can, for an i.i.d.\ training set $x^1,\dots,x^m$, be achieved by constructing $\tilde(U)$ by picking each entry of the latent vector from another randomly chosen $q(x^i)$, rather than using a single $U=q(X)$. This breaks all dependences between the entries of $\tilde{U}$, and hence the decoder (that is trying to minimize the GAN loss) cannot exploit any dependences between the latent variables. Due to information preservation, this implies that the encoder is also not encouraged to produce such dependences.
-%\item
-%\end{itemize}
-%{\em High-order independence of mechanisms:}
-If we regularize the decoder, the mechanisms will have low complexity, further contributing to their independence since algorithmic dependence requires complexity \citep{JanSch10}.
-
-The above shows that each autoencoder with independent latent variables can be viewed as the composition of an anticausal encoder that recognizes or reconstructs causal drivers in the world, and a causal/generative decoder that maps the low dimensional latent representation (of the noises driving the causal model) to objects in the high dimensional world; moreover, if the ICM principle holds, then interventions on the latent representations (as well as on causal variables downstream) should be permissible and still lead to valid generation of image data. This motivates \dropin as described below. While keeping this causal motivation in mind, we will below introduce the same method from another angle, motivated by recent progress in deep learning.
-
-
-% \subsection{Related Work}\label{sec:related}
-
-% [Generative modeling] - WAE, WGAN-GPs
-
-% [Disentanglement] - FactorVAE, beta-VAE
-
-% [Architecture] - Wasserstein++, Style-GAN, Dropout
-
-
-\section{Method}\label{sec:methods}
-
-Our focus here is on generative models that use autoencoders~\cite{ballard1987modular}. The reason autoencoders are a particularly interesting paradigm is that the encoder forms an information bottleneck forcing the encoder to carefully fill the latent space $\mathcal{U}$ with the necessary information to reconstruct the original observations. Therefore, autoencoders can be thought of as a lossy compression optimized for a specific dataset or distribution. The challenge is to find the right way to structure this latent space to significantly improve thee performance in downstream tasks, such as generation.
-
-
-\subsection{Structured Latent Spaces}\label{sec:structure}
-
-There are several popular ways to encourage certain structure in the learned latent space without supervision. We group such methods into three categories:
-
-\begin{enumerate}
-    \item \emph{Distributional} - trying to match the distribution over the latent space to some specific prior distribution. For example, if the latent distribution matches a standard normal, then it is relatively easy to sample the latent distribution.
-
-    \item \emph{Informational} - encoding specific kinds of information in subspaces of the latent space. This kind of structure is the main subject in disentanglement research, as a disentangled representation concentrates all the information pertaining to one factor of variation into one of the dimensions in the latent space.
-
-    \item \emph{Architectural} - specifying or constraining how parts of the latent space are used in downstream tasks. In this work, we are focusing on generation, so by changing the architecture of the generator, we can impose a hierarchical structure in the latent space (see section \ref{sec:arch}).
-\end{enumerate}
-
-Methods that aim for \emph{distributional} structure usually add a loss term to the training objective related to the difference between the latent distribution and the desired distribution. There are several measures of "difference" between two distributions, but the most common are the KL-divergence as in VAEs~\cite{kingma2013auto} and the Wasserstein distance as used in WAEs~\cite{tolstikhin2017wasserstein}, both of which can be efficiently estimated from a minibatch of samples.
-
-As pointed out by~\citet{tolstikhin2017wasserstein}, a notable difference between VAEs and WAEs is that the regularization of VAEs compares each latent vector to the prior individually, while WAEs regularize all of the latent vectors in the minibatch collectively. In VAEs there is thus a direct competition between making the latent vectors unique (and thereby informative) versus making the latent space match the prior.
-
-Recent advances in representation learning attempt to additionally disentangle the latent space, which is commonly done by using~\emph{informational} structure. Here VAE based approaches, such as~\cite{higgins2017beta,kim2018disentangling,burgess2018understanding,chen2018isolating,kumar2017variational} have demonstrated promising results in part because of the information-prior trade-off present in VAEs. This trade-off causes the encoder to focus all the information in a fraction of the available dimensions. Meanwhile, since WAEs are only penalized to match the prior, they learn to fold the data manifold to fill the entire latent space~\cite{rubenstein2018latent}, which is far from disentangled.
-
-One simple variant of VAEs designed to enhance the disentanglement achieved by VAEs is the Factor regularizer featured in~\cite{kim2018disentangling}. They use a discriminator in the latent space to adversarially distinguish between real latent vectors and ones where each latent dimension is permuted across the batch. As a result, the total correlation between dimensions in the latent space is minimized leading to a highly factorized, and ideally disentangled, latent space. However, the adversarial loss term makes the training significantly less stable than regular VAEs. We adapt the Factor regularizer by estimating the total correlation between the permuted and unpermuted latent vectors using the Maximum Mean Discrpancy (MMD), just like WAEs estimate the Wasserstein distance between the latent samples and the prior samples. Using the MMD our FVAE and FWAE models training is significantly more stable.
-
-However, learning a disentangled representation without supervision is impossible without the right inductive biases~\cite{locatello2018challenging}. Therefore, our focus is on two properties related to disentanglement, but significantly less ambitious: factorization, and self consistency. Factorization means that the decoder uses each dimension in the latent space independently which is not as strong as disentanglement as it does not require that the same dimension in the latent space always encodes information pertaining to the same factor of variation
-% [our focus is on factorizing the latent space, and making it compact]
-% [factorized -> still allows dimensions to locally contain different kinds of information,
-% disentangled -> factorized + axis aligned globally consistent dimensions]
-
-We will compare several common regularization techniques and combinations thereof, each denoted by a single letter when used, including the KL-divergence as in VAEs (V), Wasserstein distance (W) (estimated using MMD), Factor regularizer (F) (estimated using MMD), and~\dropin (D) (described below). For details, such as which hyperparameters were used, please consult the supplementary material, however for the $\beta$-VAEs a $\beta=4$ was used unless otherwise stated.
-
-% [we use a modified version of the Factor regularizer which uses the wasserstein distance (estimated by MMD) as a surrogate for the total correlation]
-
-
-% Here VAEs tend to be perform well compared to WAEs
-
-% We introduce two ways to impose \emph{architectural} structure to the learned latent space discussed below (see~\ref{sec:dropin} and~\ref{sec:arch}).
-
-\subsection{\dropin}\label{sec:dropin}
-
-\dropin is a method to explore~\emph{architectural} structure which hybridizes latent vectors by independently intervening along the axes of the latent space. Much like dropout~\cite{srivastava2014dropout}, \dropin has one parameter $\eta$ which is the probability that a dimension in the latent space is resampled independently using the other latent vectors in the batch (see Algorithm~\ref{alg:dropin}).
-
-This offers a new way to generate latent samples which does not require the latent distribution to match a prior. During evaluation, the generator can keep track of a set of previously encoded latent vectors and then apply~\dropin to generate exponentially more new latent samples. For sampling, we use $\eta=1$ for all models (so each dimension in the latent space is always resampled). %Instead, this sampling method works best when the latent space is generally factorized and self-consistent.
-
-\dropin can also be used during training to encourage a factorized latent space. However, unlike the regular latent samples produced by the encoder, it is not clear how to supervise samples generated using hybridized latent vectors. We propose using a training method similar to Wasserstein++~\cite{tschannen2018deep}, which means that in addition to the encoder and decoder networks, we train an adversarial discriminator network (with similar architecture to the encoder) to distinguish the samples generated using hybridized latent vectors (termed ``\dropin samples") from the original observations. Then the decoder can additionally be trained to fool the discriminator, like in generative adversarial networks. When using~\dropin~as regularization method we set $\eta=0.5$ during training to make the adversarial training more stable.
-
-\begin{algorithm}[tb]
-   \caption{\dropin}
-   \label{alg:dropin}
-\begin{algorithmic}
-   \STATE {\bfseries Input:} minibatch of $N$ vectors $u_i \in \mathbb{R}^n$ and $\eta \in (0,1]$
-   \FOR{$i=1$ {\bfseries to} $N$}
-   \FOR{$j=1$ {\bfseries to} $n$}
-   \STATE Sample $z \sim Bernoulli(z; \eta)$
-   \IF {$z = 1$}
-   \STATE Sample $k \sim \mathcal{U}\{1,\dots,N\}$
-   \STATE $q_i^{(j)} \gets q_i^{(k)}$
-   \ENDIF
-   \ENDFOR
-   \ENDFOR
-\end{algorithmic}
-\end{algorithm}
-
-\subsection{Network Architecture}\label{sec:nets}
-
-
-
-All of our models are implemented with deep convolution networks. First the observed images are resized using bilinear interpolation to the nearest power of two (64x64 for 3dShapes and MPI-3D, 128x128 for CelebA and the Atari games).  The encoder uses four or five (depending on the image size) blocks each of which contains two 2x2 convolutional layers, a group normalization layer~\cite{wu2018group}, and max pooling. The convolutional blocks are followed by two fully connected layers which output latent vectors or normal distributions with diagonal covariances for VAE-based models. The default decoder architecture mirrors the encoder, using bilinear upsampling instead of pooling layers. For details, see the supplementary material.
-
-
-\subsection{Training}\label{sec:training}
-
-We evaluate our methods on 3DShapes, 3DChairs, the MPI3D Disentanglement datasets, CelebA, and two of the Atari games. The first three are toy datasets comprised of 64x64 RGB images and are designed to contain a specific number of factors of variation (5, 5, and 6 respectively). CelebA~\cite{liu2015faceattributes} and the two Atari games each contain 128x128 RGB images.
-
-To show how our methods perform in settings where the true generative process has meaningful causal structure, we use two games from the Atari suite in OpenAI Gym~\cite{gym}: Ms Pacman and Space Invaders. For each game, we train 20 agents using the model-free reinforcement learning algorithm ACKTR~\cite{wu2017scalable} for ten million timesteps and then record the agents playing the game for 20k frames. Our models are trained on the individual frames, so there is no sense of dynamics in our task (that is left for future work).
-
-For the toy datasets, we trained each of our models for 150k iterations and with a latent space of 12 dimensions (except for some of the architecture experiments) and 200k iterations in a 32 dimensional latent space for the larger datasets, all of which used a 70-10-20 train, validation and test split. All the results presented here use the samples from the test set. More details on the training procedure can be found in the supplementary material.
-
-\subsection{Metrics}\label{sec:metrics}
-
-To quantify the visual quality of the samples generated by our decoders, we use the Fréchet Inception Distance (FID) score~\cite{heusel2017gans}. This allows us to compare the quality of the reconstructed images (FID-rec) to the quality of images generated using latent samples hybridized with \dropin ($\eta=1$) (FID-hyb) or images generated using samples from the prior (FID-prior).
-
-While there are numerous ways to quanitify how disentangled a learned representation is, we will use three different metrics: the DCI Disentanglement (DCI-D) metric~\cite{eastwood2018framework}, the Interventional Robustness Score (IRS)~\cite{suter2018robustly}, and the Mutual Information Gap~\cite{chen2018isolating} as they are quite established and consistent.
-
-For our analysis we are especially interested in measuring how intervening on individual latent dimensions affects the generated image. To that end, we develop a simple metric called the pixel effect based on estimating the Jacobian of our generator using finite differencing at several points in the latent space. The pixel effect is defined as: $\mathrm{Pixel Effect}_j(f_{dec}, u) = ||f_{dec}(u) - f_{dec}(u-h\hat{e}_j)||$, where $e_j$ is the $j$th standard basis vector and $h$ is set to half of the empirical range of the $j$th latent dimension. This pixel effect is computed for each dimension in the latent space independently and then averaged over 128 latent samples.
-
-% \begin{equation}\label{eqn:pxl}
-%     \mathrm{Pixel Effect}_j(f_{dec}, u) = ||f_{dec}(u) - f_{dec}(u-h\hat{e}_j)||
-% \end{equation}
-
-\section{Experiments}\label{sec:exp}
-
-For each of our experiments, we first describe the setting and task and evaluation criteria and the present the results. Further analysis then presented in section~\ref{sec:disc} and the supplementary material.
-
-\subsection{Generation}\label{sec:gen}
-
-First, we investigate how the performance of using~\dropin as a sampling method to generate images using the FID score. Sample generated images for these models can be found in the supplementary materials.
-
-Since the 3DShapes dataset is a relatively simple dataset, we train a separate model each of the kinds of regularization discussed above to see how they affect the ultimate perceptual quality of the generated images for each sampling technique.
-
-\subsubsection*{Results}\label{sec:gen-res}
-
-As seen in figure~\ref{fig:3ds-fid}, using~\dropin to generate latent samples produces higher quality images for all methods except for the WAE. This suggests, the WAE is the only model that matches the prior so sufficiently well, that using when choosing values for each of the latent dimensions it doesn't make a significant difference between choosing samples from the prior or previously observed latent samples as in~\dropin.
-
-Somewhat surprisingly, using~\dropin during training does not improve the quality of the generated images, but in fact significantly diminishes the quality for all sampling techniques. This is most likely due to the stability issues associated with using an adversarial loss term during training, which is only necessary when using \dropin  as a regularization.
-
-Moving on to a more challenging dataset, in this case CelebA, the shortcomings of VAEs become more apparent. Probably the most noticeable feature in~\ref{fig:celeba-fid} is that the WAE and FWAE models significantly outperform any of the VAE variants. Interestingly, the quality of the generated samples is much worse when using prior samples, suggesting that CelebA is a complex enough dataset that even WAEs cannot fully cover the latent space, resulting in holes which prior samples occasionally fall into.
-
-One way to understand why the VAEs are performing so much worse than the WAEs is by taking a closer look at how the latent space is used by the encoder and decoder as seen in figure~\ref{fig:celeba-distr}. From the first two rows, it is apparent in the standard autoencoder and WAE almost every single one of the 32 dimensional latent space has some effect on the image. Meanwhile, the VAE regularization causes only a minority of the dimensions in the latent space to hold information and affect the decoder. Since the complexity of the data distribution obviously does not change, this means a $\beta$-VAE with $\beta=16$ tries to project the entire manifold of celebrity faces into five dimensions, resulting in significant averaging and blurriness between samples.
-
-Finally, we note that while using~\dropin as the only regularization does not perform well, when combining~\dropin with the Wasserstein metric or the Factor regularizer as seen by DWAE and FDWAE respectively, then the images generated using hybridized samples are better than any of the images generated by the VAEs.
-
-Due to space constraints, the results for the other datasets (including the MPI 3D disentanglement datasets, 3D Chairs, and Atari games) are discussed in the supplementary materials.
-
-% FID:
-% WAE is always better than VAE in terms of quality of images (both generated and reconstructed).
-
-% For 3dshapes, sampling by dropin produces signficantly higher quality samples than f
-
-% % For CelebA, WAEs produce much better samples,
-% \begin{table*}[]\label{tab:results_fid}
-% \begin{center}
-% \begin{small}
-% \begin{sc}
-% \begin{tabular}{l|ccc|ccc|ccc|ccc}
-% \hline
-%         & \multicolumn{3}{c|}{CelebA} & \multicolumn{3}{c|}{3DShapes} & \multicolumn{3}{c|}{Space Inv} & \multicolumn{3}{c}{Pacman} \\ \hline
-%         & Rec     & Hybrid  & Prior   & Rec     & Hybrid   & Prior    & Rec      & Hybrid    & Prior   & Rec     & Hybrid   & Prior  \\ \cline{2-13}
-% VAE*    & 81.13   & 87.19   & 86.44   & 40.29   & 53.91    & 61.17    & -        & -         & -       & -       & -        & -      \\
-% 4 -VAE* & 85.42   & 92.63   & 92.21   & 53.81   & 63.91    & 68.48    & -        & -         & -       & -       & -        & -      \\
-% FVAE*   & 93.67   & 95.37   & 93.22   & 79.69   & 82.78    & 89.98    & -        & -         & -       & -       & -        & -      \\
-% 4-VAE   & 138.34  & 136.58  & 130.00  & 26.27   & 27.67    & 33.89    & 15.98    & 22.60     & 23.69   & -       & -        & -      \\
-% VAE     & 137.67  & 135.32  & 130.68  & 24.19   & 29.92    & 36.86    & -        & -         & -       & 12.69   & 13.76    & 19.89  \\
-% AE      & 135.75  & 130.87  & 138.84  & 24.14   & 41.58    & 80.20    & 7.42     & 48.28     & 48.93   & -       & -        & -      \\
-% WAE     & 121.39  & 118.84  & 138.08  & 24.11   & 32.68    & 32.59    & 8.07     & 29.89     & 22.32   & 9.33    & 18.21    & 15.59  \\
-% FAE     & 132.72  & 134.93  & 126.10  & 52.76   & 60.50    & 125.87   & -        & -         & -       & -       & -        & -      \\
-% FVAE    & 137.38  & 134.46  & 130.21  & 26.74   & 31.15    & 38.24    & 15.27    & 27.74     & 27.28   & 15.27   & 27.74    & 27.28  \\
-% DAE     & 145.32  & 147.62  & 144.21  & 65.11   & 74.63    & 91.31    & -        & -         & -       & -       & -        & -      \\
-% DWAE    & 129.43  & 131.69  & 138.72  & -       & -        & -        & 27.62    & 39.78     & 39.27   & 15.19   & 21.44    & 20.65  \\
-% FDWAE   & 134.19  & 136.04  & 141.71  & -       & -        & -        & 23.30    & 28.66     & 40.55   & 16.61   & 17.69    & 21.06  \\
-% DVAE    & -       & -       & -       & -       & -        & -        & 32.09    & 46.39     & 42.77   & 23.02   & 23.07    & 30.24  \\
-% FWAE    & 120.73  & 121.08  & 130.39  & 25.44   & 32.11    & 36.12    & -        & -         & -       & 11.72   & 12.84    & 21.66
-% \end{tabular}
-% \end{sc}
-% \end{small}
-% \end{center}
-% \caption{Results of CelebA, 3D Shapes, Space Inv and Pacman on FID. {\sc{Rec}} corresponds to FID computed on only the reconstructed samples, {\sc{Hybrid}} corresponds to FID computed on only the hybrid samples and {\sc{Prior}} corresponds to FID computed on samples obtained by sampling from the prior. * corresponds to the models which were trained with the original configuration. \red{TODO: Mention somewhere that the original config was trained for 1 mil.}}
-% \end{table*}
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% \begin{table*}[]\label{tab:mpi_fid}
-% \begin{center}
-% \begin{small}
-% \begin{sc}
-% \begin{tabular}{l|ccc|ccc|ccc}
-% \hline
-%         & \multicolumn{3}{c|}{MPI Toy} & \multicolumn{3}{c|}{MPI Real} & \multicolumn{3}{c}{MPI  Realistic} \\ \hline
-%         & Rec      & Hybrid  & Prior   & Rec     & Hybrid   & Prior    & Rec        & Hybrid     & Prior     \\ \hline
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+This document contains further details on the methods, training, and results to accompany the paper "Structuring Deep Generative Models with Interventions for Transfer", which is under review for ICML 2020 (submission ID 5825).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Methods}
+
+\subsection{Network Architectures}
+
+All models use the same basic architecture for the encoder, decoder, and discriminator (when necessary), except for the modified architectures with Ada-In layers~\cite{karras2019style} in the Architecture experiment (see section 4.3 in the paper).
+
+The encoder transforms the RGB images to an $n$ dimensional latent vector, or $2n$ for the VAE-based models, which is then interpreted as the $n$ dimensional mean and log variance of the posterior (as is standard for VAEs). Details on the network architectures for all models can be found in tables~\ref{tab:enc-conv}-\ref{tab:dec-conv-large}. Note that the stride of all convolutional layers was 1.
+
+
+\begin{table*}[]
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{c|cc}
+\hline
+Layer & Input & Output \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 3x64x64 & 64x65x65 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x65x65 & 64x64x64 \\
+Max pooling (2x2) & 64x64x64 & 64x32x32  \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x32x32 & 64x33x33 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x33x33 & 64x32x32 \\
+Max pooling (2x2) & 64x32x32 & 64x16x16 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x16x16 & 64x17x17 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x17x17 & 64x16x16 \\
+Max pooling (2x2) & 64x16x16 & 64x8x8 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x8x8 & 128x9x9 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x9x9 & 128x8x8 \\
+Max pooling (2x2) & 128x8x8 & 128x4x4 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x4x4 & 128x5x5 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x5x5 & 128x4x4 \\
+Max pooling (2x2) & 128x4x4 & 128x2x2 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Flatten & 128x2x2 & 512 \\
+Fully connected & 512 & 256 \\
+ELU activation & & \\
+Fully connected & 256 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & $n=12$ \\
+\hline
+
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Outline of the encoder architecture for small datasets (Shapes-3D, Chairs-3D, and the MPI-3D datasets).\label{tab:enc-conv}}
+\end{table*}
+
+\begin{table*}[]
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{c|cc}
+\hline
+Layer & Input & Output \\
+\hline
+Fully connected & 12 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 256 \\
+ELU activation & & \\
+Fully connected & 256 & 512 \\
+ELU activation & & \\
+Reshape & 512 & 128x2x2 \\
+\hline
+Bilinear upsampling & 128x2x2 & 128x4x4 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x4x4 & 128x5x5 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x5x5 & 128x4x4 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 128x4x4 & 128x8x8 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x8x8 & 64x9x9 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x9x9 & 64x8x8 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 64x8x8 & 64x16x16 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x16x16 & 64x17x17 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x17x17 & 64x16x16 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 64x16x16 & 64x32x32 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x32x32 & 64x33x33 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x33x33 & 64x32x32 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 64x32x32 & 64x64x64 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x64x64 & 3x65x65 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 3x65x65 & 3x64x64 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Outline of the decoder architecture for small datasets (Shapes-3D, Chairs-3D, and the MPI-3D datasets). \label{tab:dec-conv}}
+\end{table*}
+
+
+
+\begin{table*}[]
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{c|cc}
+\hline
+Layer & Input & Output \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 3x128x128 & 64x129x129 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x129x129 & 64x128x128 \\
+Max pooling (2x2) & 64x128x128 & 64x64x64 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x64x64 & 64x65x65 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x65x65 & 64x64x64 \\
+Max pooling (2x2) & 64x64x64 & 64x32x32 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x32x32 & 128x33x33 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x33x33 & 128x32x32 \\
+Max pooling (2x2) & 128x32x32 & 128x16x16 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x16x16 & 128x17x17 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x17x17 & 128x16x16 \\
+Max pooling (2x2) & 128x16x16 & 128x8x8 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x8x8 & 128x9x9 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x9x9 & 128x8x8 \\
+Max pooling (2x2) & 128x8x8 & 128x4x4 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x4x4 & 256x5x5 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 256x5x5 & 256x4x4 \\
+Max pooling (2x2) & 256x4x4 & 256x2x2 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Flatten & 256x2x2 & 1024 \\
+Fully connected & 1024 & 256 \\
+ELU activation & & \\
+Fully connected & 256 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & $n=32$ \\
+\hline
+
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Outline of the encoder architecture for the large datasets (CelebA and the Atari games). All discriminators use the same architecture, except the output is one dimensional.\label{tab:enc-conv-large} }
+\end{table*}
+
+\begin{table*}[]
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{c|cc}
+\hline
+Layer & Input & Output \\
+\hline
+Fully connected & 32 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 128 \\
+ELU activation & & \\
+Fully connected & 128 & 256 \\
+ELU activation & & \\
+Fully connected & 256 & 1024 \\
+ELU activation & & \\
+Reshape & 1024 & 256x2x2 \\
+\hline
+Bilinear upsampling & 256x2x2 & 256x4x4 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 256x4x4 & 128x5x5 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x5x5 & 128x4x4 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 128x4x4 & 128x8x8 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x8x8 & 128x9x9 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x9x9 & 128x8x8 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 128x8x8 & 128x16x16 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x16x16 & 128x17x17 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 128x17x17 & 128x16x16 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 128x16x16 & 128x32x32 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 128x32x32 & 64x33x33 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x33x33 & 64x32x32 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 64x32x32 & 64x64x64 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x64x64 & 64x65x65 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 64x65x65 & 64x64x64 \\
+Group Norm (8 groups) & & \\
+ELU activation & & \\
+\hline
+Bilinear upsampling & 64x64x64 & 64x128x128 \\
+2D-Conv (kernel = 2x2, pad=(1,1)) & 64x128x128 & 3x129x129 \\
+ELU activation & & \\
+2D-Conv (kernel = 2x2) & 3x129x129 & 3x128x128 \\
+Group Norm (8 groups) & & \\
+Sigmoid activation & & \\
+\hline
+
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Outline of the decoder architecture for the large datasets (CelebA and the Atari games)\label{tab:dec-conv-large}}
+\end{table*}
+
+
+
+\subsection{Training}
+
+All models were trained using an Adam optimizer with a learning rate of 0.001, no weight decay and momentum parameters $\beta_1=0.9$ and $\beta_2=0.999$. The batch size for the small datasets (Shapes-3D, Chairs-3D, and MPI-3D) was 128, and 32 for the large datasets (CelebA and the Atari games). All models were trained for 100k iterations on the small datasets and 200k for the large datasets, except for the original baselines which were trained for 1M iterations.
+
+For the adversarial training, the discriminator used the same optimizer except the momentum parameters were set to $\beta_1=0.5$ and $\beta_2=0.9$. Other than that, all the same parameters were used as in Wasserstein++~\cite{tschannen2018deep}.
+
+\subsection{Hyperparameters}
+
+For the method specific hyperparameters we started with values consistent with prior work and the baselines, but then used random hyperparameter search to improve performance for all methods. Specifically, for the Factor-VAEs we found that decreasing the weight on the factor regularizer (called $\gamma$ in~\cite{kim2018disentangling}) to 1 improved the quality of generated samples without significantly affecting the disentanglement scores. Meanwhile, the regularization weight for the Wasserstein distance estimated by MMD was set to 100, as in~\cite{tolstikhin2017wasserstein}. The factor regularizer did not have a significant effect on the WAE until the weight was set to 1000 (which roughly corresponds to $\gamma=10$ with respect to Factor-VAEs). As mentioned in the paper, when using~\dropin~for training, $\eta=0.5$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}
+
+\subsection{Quantitative Comparison}
+
+Tables~\ref{tab:fid-3ds},~\ref{tab:fid-atari}, and~\ref{tab:fid-mpi} list all the FID scores for each of the investigated sampling methods for all the datasets we tested. Due to the large scale of our experiments (training upwards of 20 different kinds of models for each dataset), the models with significantly worse performance were omitted.
+
+\begin{table*}[]
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{l|ccc|ccc}
+\hline
+        & \multicolumn{3}{c|}{CelebA} & \multicolumn{3}{c}{3DShapes}  \\ \cline{2-7}
+          & Rec      & Hybrid    & Prior   & Rec     & Hybrid   & Prior  \\ \hline
+VAE*    & 81.13   & 87.19   & 86.44   & 40.29   & 53.91    & 61.17    \\
+4 -VAE* & 85.42   & 92.63   & 92.21   & 53.81   & 63.91    & 68.48    \\
+FVAE*   & 93.67   & 95.37   & 93.22   & 79.69   & 82.78    & 89.98     \\
+4-VAE   & 138.34  & 136.58  & 130.00  & 26.27   & 27.67    & 33.89      \\
+VAE     & 137.67  & 135.32  & 130.68  & 24.19   & 29.92    & 36.86   \\
+AE      & 135.75  & 130.87  & 138.84  & 24.14   & 41.58    & 80.20     \\
+WAE     & 121.39  & 118.84  & 138.08  & 24.11   & 32.68    & 32.59   \\
+FAE     & 132.72  & 134.93  & 126.10  & 52.76   & 60.50    & 125.87     \\
+FVAE    & 137.38  & 134.46  & 130.21  & 26.74   & 31.15    & 38.24    \\
+DAE     & 145.32  & 147.62  & 144.21  & 65.11   & 74.63    & 91.31     \\
+% DWAE    & 129.43  & 131.69  & 138.72  & -       & -        & -       \\
+% FDWAE   & 134.19  & 136.04  & 141.71  & -       & -        & -       \\
+% DVAE    & -       & -       & -       & -       & -        & -        \\
+FWAE    & 120.73  & 121.08  & 130.39  & 25.44   & 32.11    & 36.12   \\
+\hline
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Results of CelebA, 3D Shapes, Space Inv and Pacman on FID. {\sc{Rec}} corresponds to FID computed on only the reconstructed samples, {\sc{Hybrid}} corresponds to FID computed on only the hybrid samples and {\sc{Prior}} corresponds to FID computed on samples obtained by sampling from the prior. * corresponds to the models which were trained with the original configuration.\label{tab:fid-3ds}}
+\end{table*}
+
+
+
+\begin{table*}[]\label{tab:results_fid}
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{l|ccc|ccc}
+\hline
+        & \multicolumn{3}{c|}{Space Inv} & \multicolumn{3}{c}{Pacman} \\ \cline{2-7}
+        & Rec      & Hybrid    & Prior   & Rec     & Hybrid   & Prior  \\ \hline
+4-VAE      & 15.98    & 22.60     & 23.69   & -       & -        & -      \\
+VAE        & -        & -         & -       & 12.69   & 13.76    & 19.89  \\
+AE         & 7.42     & 48.28     & 48.93   & -       & -        & -      \\
+WAE        & 8.07     & 29.89     & 22.32   & 9.33    & 18.21    & 15.59  \\
+% FAE      & -        & -         & -       & -       & -        & -      \\
+FVAE       & 15.27    & 27.74     & 27.28   & 15.27   & 27.74    & 27.28  \\
+% DAE       & -        & -         & -       & -       & -        & -      \\
+DWAE       & 27.62    & 39.78     & 39.27   & 15.19   & 21.44    & 20.65  \\
+FDWAE         & 23.30    & 28.66     & 40.55   & 16.61   & 17.69    & 21.06  \\
+DVAE        & 32.09    & 46.39     & 42.77   & 23.02   & 23.07    & 30.24  \\
+FWAE      & -        & -         & -       & 11.72   & 12.84    & 21.66 \\
+\hline
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\caption{Quantitative results on generation quality for the two Atari games tested. Note that the WAE-based methods performed significantly better than all others, and that the hybrid sampling method (using~\dropin) generally outperforms using the prior.\label{tab:fid-atari}}
+\end{table*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table*}[]\label{tab:mpi_fid}
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{l|ccc|ccc|ccc}
+\hline
+        & \multicolumn{3}{c|}{MPI Toy} & \multicolumn{3}{c|}{MPI Real} & \multicolumn{3}{c}{MPI  Realistic} \\ \cline{2-10}
+        & Rec      & Hybrid  & Prior   & Rec     & Hybrid   & Prior    & Rec        & Hybrid     & Prior     \\ \hline
 % 4 -VAE* & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
-% 4-VAE   & 143.71   & 143.70  & 131.59  & 74.84   & 72.01    & 69.43    & 114.17     & 108.22     & 102.23    \\
+4-VAE   & 143.71   & 143.70  & 131.59  & 74.84   & 72.01    & 69.43    & 114.17     & 108.22     & 102.23    \\
 % VAE*    & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
-% VAE     & 60.77    & 59.73   & 59.78   & 48.97   & 50.89    & 52.56    & 79.39      & 77.48      & 77.32     \\
-% AE      & 39.95    & 62.87   & 146.18  & 63.79   & 88.66    & 160.68   & -          & -          & -         \\
-% WAE     & 13.57    & 23.45   & 24.13   & 25.75   & 30.63    & 30.83    & 42.60      & 48.15      & 48.29     \\
+VAE     & 60.77    & 59.73   & 59.78   & 48.97   & 50.89    & 52.56    & 79.39      & 77.48      & 77.32     \\
+AE      & 39.95    & 62.87   & 146.18  & 63.79   & 88.66    & 160.68   & -          & -          & -         \\
+WAE     & 13.57    & 23.45   & 24.13   & 25.75   & 30.63    & 30.83    & 42.60      & 48.15      & 48.29     \\
 % FAE     & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
 % FVAE*   & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
-% FVAE    & -        & -       & -       & 48.98   & 48.80    & 49.97    & 82.45      & 81.09      & 82.51     \\
+FVAE    & -        & -       & -       & 48.98   & 48.80    & 49.97    & 82.45      & 81.09      & 82.51     \\
 % DAE     & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
 % DWAE    & -        & -       & -       & -       & -        & -        & -          & -          & -         \\
 % FDWAE   & 251.90   & 251.90  & 250.06  & -       & -        & -        & -          & -          & -         \\
 % DVAE    & 62.72    & 60.09   & 59.35   & -       & -        & -        & -          & -          & -         \\
-% FWAE    & 16.81    & 18.50   & 19.95   & 26.46   & 28.14    & 28.21    & 45.99      & 45.57      & 44.38
-% \end{tabular}
-% \end{sc}
-% \end{small}
-% \end{center}
-% \caption{[placeholder]}
-% \end{table*}
-% %------------------------------------------------------------------------------------------
-\begin{figure}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=\columnwidth]{figures/fid_3dshapes.pdf}}
-\caption{FID score comparison of generated images using different sampling techniques (color) and different methods (y-axis) for the 3DShapes dataset (lower is better). Note that for all methods using drop-in to generate latent samples (orange) leads to higher quality images than using samples from the prior distribution (green). Furthermore, it appears regularizing towards a prior (any VAE or WAE) performs significantly better than just using the Factor or even \dropin as a regularizer (FAE and DAE).}
-\label{fig:3ds-fid}
-\end{center}
-\vskip -0.2in
-\end{figure}
-
-% \begin{figure}[ht]
-% % \vskip 0.2in
-% \begin{center}
-% \centerline{\includegraphics[width=\columnwidth]{figures/3dshapes_distrib.pdf}}
-% \caption{On the left (blue), are the empirical distributions of each latent dimension of 128 randomly selected latent samples. On the right (green), is the average effect in pixel space of changing each dimension in the latent space on the resulting generated image for 3DShapes. For the VAEs, the distributions are over the means only. Note how, just like the unregularized autoencoder (AE), the WAE makes use of almost the entire latent space, while the VAE variants focus all the information into a fraction of the available dimensions. The scale of all green plots is the same, while for the blue distributions each dimension is demeaned and rescaled independently if it extends beyond a range of [-3,3] (so it fits on the plot). Quantitative distributions available in the supplementary material.}
-% \label{fig:3ds-distr}
-% \end{center}
-% \vskip -0.2in
-% \end{figure}
-
-\begin{figure}[ht]
-% \vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=\columnwidth]{figures/fid_celeba.pdf}}
-\caption{FID score comparison of generated images using different sampling techniques (color) and different methods (y-axis) for the CelebA dataset (so lower is better). Note that samples generated by the WAE and FWAE are significantly higher quality than any of the VAE based models. Interestingly, several models generate better images when using \dropin samples (orange) than the reconstructions (blue).}
-\label{fig:celeba-fid}
-\end{center}
-% \vskip -0.2in
-\end{figure}
-
-\begin{figure}[ht]
-% \vspace{-0.2in
-\begin{center}
-\centerline{\includegraphics[width=\columnwidth]{figures/celeba_distrib.pdf}}
-\caption{On the left (blue), are the empirical distributions of each latent dimension of 128 randomly selected latent samples. On the right (green), is the average effect in pixel space of changing each dimension in the latent space on the resulting generated image for CelebA. For the VAEs, the distributions are over the means only. Comparing the VAE variants, it is evident that as $\beta$ is increased the encoder uses fewer of the dimensions in the latent space. Similarly, the FWAE uses a smaller subset of latent dimensions, but without the decreased image quality of VAEs. Quantitative distributions available in the supplementary material.}
-\label{fig:celeba-distr}
-\end{center}
-\vskip -0.2in
-\end{figure}
-
-
-\subsection{Disentanglement}\label{sec:inter}
-
-Next we evaluate how these kinds of regularization methods affect help learn a disentangled representation. While full disentanglement is not necessarily what we are after here, disentanglement is closely related to how factorized a latent space is, which in turn helps improve the samples generated using~\dropin.
-
-\subsubsection*{Results}\label{sec:dis-res}
-
-Table~\ref{tbl:dis} shows the disentanglement score each of the models also featured in~\ref{fig:3ds-fid} achieve for the 3DShapes dataset. For all metrics, the~$\beta$-VAE performs best, however as discussed in section~\ref{sec:gen-res}, $\beta$-VAEs may perform sufficiently well on toy datasets like 3DShapes, however the visual quality does not scale to more complex datasets like CelebA or Atari games. However, both the FWAE model performs well in terms of disentanglement scores, while still achieving high performance in terms of FID score. This suggests that by choosing the regularization more carefully the learned representation can be reasonably disentangled while still being able to generate high quality images.
-
-Also noteworthy is that using~\dropin during training does make the learned representation significantly more disentangled. However, once again the issue here is most likely the fact in the adversarial component of the
-
-\begin{table}[t]
-\caption{Disentanglement scores for 3DShapes comparing Regularization Methods}
-\label{tbl:dis}
-% \vskip 0.15in
-\begin{center}
-\begin{small}
-\begin{sc}
-\begin{tabular}{lccc}
-\toprule
-Model & DCI-D & IRS & MIG \\
-\midrule
-AE & 0.22 & 0.66 & 0.05 \\
-WAE & 0.32 & 0.54 & 0.10 \\
-FWAE & 0.60 & 0.75 & 0.33 \\
-FVAE & 0.58 & 0.73 & 0.37 \\
-VAE & 0.59 & 0.70 & 0.34 \\
-$\beta$-VAE & {\bf 0.89} & {\bf 0.82} & {\bf 0.73} \\
-FAE & 0.31 & 0.64 & 0.05 \\
-DAE & 0.29 & 0.66 & 0.09 \\
-\bottomrule
+FWAE    & 16.81    & 18.50   & 19.95   & 26.46   & 28.14    & 28.21    & 45.99      & 45.57      & 44.38    \\
+\hline
 \end{tabular}
 \end{sc}
 \end{small}
 \end{center}
-\vskip -0.1in
-\end{table}
+\caption{Quantitative results on generation quality for the three different variants of the MPI-3D Disentanglement dataset. Note that the WAE-based methods performed significantly better than all others, and that the hybrid sampling method (using~\dropin) generally outperforms using the prior.\label{tab:fid-mpi}}
+\end{table*}
+
+\subsection{Samples}
+
+Figures~\ref{fig:3dshapes_fwae}-\ref{fig:celeba-adain_wae} show a few samples generated using the two sampling techniques discussed in the main text (using~\dropin~and using the prior distribution) in addition to examples of original (input) samples and the corresponding reconstructions for comparison. Furthermore, we attach traversals in each of the latent dimensions starting with the latent vector produced by each of the three top-right images in figures (a) as videos separately as supplementary material in this submission.
+
+A few things to note about these results:
+
+
+\begin{enumerate}
+    \item In the latent traversals, the complex structure learned by the models using intermediate Ada-In layers in the decoder to integrate latent vectors a few dimensions at a time can be seen. All the models with a $(N,M)$ after the method name use the special architecture where $N$ refers to the number of root dimensions, and $M$ to the number of latent dimensions in each of the branches (for more info see the main paper, section 4.3). For all of the latent traversals, the dimensions are in order, so for example in the video for the AE (2,1) model, called "$\texttt{Shapes-3D\_AE-(2,1)\_trav1.mp4}$", the first two dimensions starting from the top-right corner moving left to right then top to bottom are passed into the decoder from the start, then after every convolutional block, one more dimension is passed in through an Ada-In layer. There are two particularly interesting aspects to the learned structure: (1) there is a clear hierarchy of factors of variation that is learned, even from a vanilla autoencoder (no regularization at all). Varying the first few dimensions (those passed into the decoder early) tends to affect the size and shape of the object in the image, and the camera orientation. Meanwhile the other three factors of variation are encoded in the last few latent dimensions. This can be explained by how each of these factors of variation affect the generated image. The dependence of the RGB values on the camera orientation is a more complex function, so that information is decoded deeper in the generator, while properties like color have a more direct relationship to the ultimate output, so that can be decoded closer to the output layer. (2) The latent space is less smooth. In other words, changing the value of one of the latent dimensions beyond what is expected by the decoder causes the quality of the sample to suffer significantly (which can be seen especially in the first dimension, for this model).
+
+    \item Focusing on the models that do not regularize towards a prior distribution (AE and FAE), we see, unsurprisingly that using prior samples tends to produce lower quality samples. Interestingly, individual usually don't look particularly bad, however there is very little variety in the generated samples. This is unsurprising as the intrinstic scale of the latent space is significantly larger than that of the prior, so prior samples cover a relatively small fraction of the latent space, for more information see the corresponding latent distribution in section~\ref{sec:latent}.
 
 
 
-
-\subsection{Architectures}\label{sec:arch}
-
-Usually the architecture of the decoder is mirrored on the architecture of the encoder. However, some projects like Style-GAN have shown impressive results by feeding information from the latent space not just into the first layer of the generator, but also to intermediate layers using Adaptive instance normalization (Ada-In) layers~\cite{karras2019style}. Here we investigate how we can impose a hierarchical structure to the latent space by passing some parts of the latent space later in the model.
-
-An overview of our decoder architecture can be seen in figure~\ref{fig:adain}. When decoding a latent sample, first the latent vector is split the first $R$ dimensions to form a "root" component, while the other dimensions are further split evenly into $M$ "branch" parts each with $B$ dimensions, where $M$ is the number of Ada-In layers in the decoder ($M=4$ for the 64x64 datasets, and $M=5$ for the 128x128 datasets) (so $D=R+MB$). Next, only the root component is passed into the beginning of the decoder, while each of the branch components is used to compute the "style" parameters of Ada-In layer. All of our models that use this architecture are labeled with the convention $\mathrm{A}(R,B)$.
-
-In this experiment, we use a simple autoencoder without any additional regularization (AE), but try several different sizes for the root and branch components of the latent space to see how that affects the quality of the generated images and the structure of the latent space.
+\end{enumerate}
 
 
-\begin{figure}[ht]
-\begin{center}
-\centerline{\includegraphics[width=\columnwidth]{figures/generator_new.jpg}}
-\vspace{-0.2in}
-\caption{Overview of the decoder architecture to impose hierarchical structure to the generator. Note that the full latent vector $q$ is split into a "root" component $R$ and, in this case, 4 $B$ "branch" components. Only the root component of the latent vector is fed into the beginning of the decoder, and then each branch component is fed into the model using an Ada-In layer and a dense feature extractor with one hidden layer (denoted "A") in between each convolutional block. This produces a hierarchy in the latent space where the first few dimensions of the latent space focus on higher level information, while later dimensions contain lower level information, such as color.}
-\label{fig:adain}
-\end{center}
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fwae_gen.png}}
+    \caption{Shapes-3D FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes_fwae}
 \end{figure}
 
-\subsubsection*{Results}\label{sec:arch-res}
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_vae_gen.png}}
+    \caption{Shapes-3D VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes_vae}
+\end{figure}
 
-Table~\ref{tbl:arch_unreg} contains both the FID and disentanglement results for each of the different decoder architectures we tested. Note that since for this generator there are a total of four Ada-In layers ($M=4$), so only the last two models that we tested have a total latent space size of 4 and 6 respectively. Nevertheless, all models with this new architecture have significantly better disentanglement scores than an autoencoder with the default feed-forward architecture (which is the same model as discussed in section~\ref{sec:gen}). In fact, the second model, A(4,2), which uses the first four dimensions as the root and two dimensions per branch, achieves a DCI Disentanglement score almost as high as the $\beta$-VAE or FVAE models. This offers another promising way to achieve a reasonable degree of disentanglement, without any regularization.
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_wae_gen.png}}
+    \caption{Shapes-3D WAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes_wae}
+\end{figure}
 
-However, this architecture also makes it more challenging to generate latent samples. Since the latent space now has a complicated hierarchical structure, treating each dimension as an independent distribution cannot be justified. Here~\dropin~is a promising alternative to the conventional sampling methods, as evidenced by the fact that for all models we tested images generated from hybridized samples produced significantly better samples than when using prior samples. % ! this experiment should be run with WAEs not AEs !
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_ae_gen.png}}
+    \caption{Shapes-3D AE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes_fae_gen.png}}
+    \caption{Shapes-3D FAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes_fae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_ae_gen.png}}
+    \caption{CelebA AE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fvae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fvae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fvae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fvae_gen.png}}
+    \caption{CelebA FVAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_fvae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_fwae_gen.png}}
+    \caption{CelebA FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_vae_gen.png}}
+    \caption{CelebA VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_4vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_4vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_4vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_4vae_gen.png}}
+    \caption{CelebA 4-VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_4vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_16vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_16vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_16vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba_16vae_gen.png}}
+    \caption{CelebA 16-VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba_16vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_ae_gen.png}}
+    \caption{MPI-3D Toy AE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-toy_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_fwae_gen.png}}
+    \caption{MPI-3D Toy FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-toy_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_vae_gen.png}}
+    \caption{MPI-3D Toy VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-toy_vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-toy_wae_gen.png}}
+    \caption{MPI-3D Toy WAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-toy_wae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_ae_gen.png}}
+    \caption{MPI-3D Real AE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-real_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fvae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fvae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fvae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fvae_gen.png}}
+    \caption{MPI-3D Real FVAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-real_fvae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_fwae_gen.png}}
+    \caption{MPI-3D Real FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-real_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_vae_gen.png}}
+    \caption{MPI-3D Real VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-real_vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/mpi3d-real_wae_gen.png}}
+    \caption{MPI-3D Real WAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:mpi3d-real_wae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_ae_gen.png}}
+    \caption{SpaceInvaders AE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:spaceinv_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fvae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fvae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fvae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fvae_gen.png}}
+    \caption{SpaceInvaders FVAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:spaceinv_fvae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_fwae_gen.png}}
+    \caption{SpaceInvaders FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:spaceinv_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/spaceinv_wae_gen.png}}
+    \caption{SpaceInvaders WAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:spaceinv_wae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_fwae_gen.png}}
+    \caption{Pacman FWAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:pacman_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_vae_gen.png}}
+    \caption{Pacman VAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:pacman_vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/pacman_wae_gen.png}}
+    \caption{Pacman WAE (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:pacman_wae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s3-d0_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s3-d0_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s3-d0_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s3-d0_gen.png}}
+    \caption{Shapes-3D AE (0,3) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:arch_s3-d0}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d8_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d8_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d8_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d8_gen.png}}
+    \caption{Shapes-3D AE (8,1) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:arch_s1-d8}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d0_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d0_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d0_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d0_gen.png}}
+    \caption{Shapes-3D AE (0,1) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:arch_s1-d0}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d2_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d2_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d2_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/arch_s1-d2_gen.png}}
+    \caption{Shapes-3D AE (2,1) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:arch_s1-d2}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_ae_gen.png}}
+    \caption{Shapes-3D AE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fwae_gen.png}}
+    \caption{Shapes-3D FWAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fvae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fvae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fvae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_fvae_gen.png}}
+    \caption{Shapes-3D FVAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_fvae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_vae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_vae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_vae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_vae_gen.png}}
+    \caption{Shapes-3D VAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_vae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_bvae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_bvae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_bvae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_bvae_gen.png}}
+    \caption{Shapes-3D 4-VAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_bvae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/3dshapes-adain_wae_gen.png}}
+    \caption{Shapes-3D WAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:3dshapes-adain_wae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_ae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_ae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_ae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_ae_gen.png}}
+    \caption{CelebA AE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba-adain_ae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_fwae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_fwae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_fwae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_fwae_gen.png}}
+    \caption{CelebA FWAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba-adain_fwae}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_wae_originals.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_wae_recs.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_wae_hybrids.png}}
+    \subfigure[]{\includegraphics[width=0.24\textwidth]{figures/celeba-adain_wae_gen.png}}
+    \caption{CelebA WAE (4,2) (a) Original (b) Reconstructions (c) Hybrid (d) Prior}
+    \label{fig:celeba-adain_wae}
+\end{figure}
+
+\clearpage
+
+\subsection{Latent Spaces} \label{sec:latent}
+
+Figures~\ref{fig:3dshapes_fwae_latent}-\ref{fig:celeba-adain_wae_latent} show the quantitative analysis of the learned representations in terms of the distributions of each latent dimensions and the effect of varying each latent dimension has on the resulting output of the decoder (see Image Effect in the original paper). A few things to note about these results:
+
+\begin{enumerate}
+    \item Perhaps most apparent is that for all datasets, most methods we tested only ended up using a relatively small fraction of the latent space. For example, the encoder of the VAE trained on the MPI-3D Toy dataset (figure~\ref{fig:mpi3d-toy_vae_latent}) ended up producing essentially constant values for 10 out of the provided 12 latent dimensions. Consequently, varying any of those unused dimensions has no effect on the generated image (as seen in figure~\ref{fig:mpi3d-toy_vae_latent}b). This means the entire data manifold (which has 7 degrees of freedom) is compressed into only two dimensions, leading to significant mode collapse and averaging.
 
 
+    \item Figures~\ref{fig:celeba_vae_latent}, \ref{fig:celeba_4vae_latent}, and \ref{fig:celeba_16vae_latent} show the effects of increasing the weight of the regularization of the prior ($\beta$) from 1 to 4 to 16 (respectively). As expected, as the KL regularization becomes stronger, the model learns to encode the entire data manifold into fewer dimensions. This suggests varying $\beta$ is like setting a price on each dimension in the latent space. As $\beta$ increases, the encoder compresses the data manifold into fewer dimensions of the latent space. Furthermore, since the observed factors of variation in the images tend to correspond to clear (but notably not necessarily linear) separations in the data space, a good choice of $\beta$ encourages the model to project the manifold into a correctly sized latent representation where the latent dimensions tend to align with the factors of variation, thereby achieving disentanglement. Since Shapes-3D manifold was designed to have six degrees of freedom (each of the factors of variation), it appears from figures \ref{fig:celeba_4vae_latent} and \ref{fig:celeba_16vae_latent} setting $\beta$ between 4 and 16 should produce a representation with the same number of degrees of freedom.
 
-\begin{table}[t]
-\caption{FID and Disentanglement scores for 3DShapes comparing different Architectures all with an unregularized Autoencoder}
-\label{tbl:arch_unreg}
-% \vskip 0.15in
-\begin{center}
-\begin{small}
-\begin{sc}
-\begin{tabular}{lcccccc}
-\toprule
-%Model & FID-R (\downarrow) & FID-D (\downarrow) & FID-P (\downarrow) & DCI-d (\uparrow) & IRS (\uparrow) & MIG (\uparrow) \\
-Model & FID-R  & FID-D  & FID-P  & DCI-d & IRS & MIG  \\
-\midrule
-default & 24.14 & 41.58 & 80.20 & 0.22 & 0.66 & 0.05 \\
-A(4,2) & 22.41 & 93.43 & 98.53  & {\bf 0.67} & {\bf 0.66} & 0.19 \\
-A(0,3) & {\bf 21.48} & 80.45 & 104.43 & 0.59 & 0.58 & 0.09 \\
-A(8,1) & 25.32 & {\bf 40.90} & {\bf 72.79} & 0.57 & 0.62 & 0.11 \\
-A(0,1) & 40.63 & 48.23 & 152.66 & 0.43 & 0.72 & {\bf 0.28} \\
-A(2,1) & 22.78 & 44.21 & 111.32 & 0.54 & 0.58 & 0.20 \\
+\end{enumerate}
 
-\bottomrule
-\end{tabular}
-\end{sc}
-\end{small}
-\end{center}
-\vskip -0.1in
-\end{table}
-
-
-
-\subsection{Transfer}\label{sec:trans}
-
-Here we apply each of our models to the very practical task of transfer learning. One particularly useful property for learned latent spaces to have is that they readily lend themselves to be adapted and expanded upon making new observations. Here focus of traditional disentanglement may not be particularly beneficial, as learning a compact representation based on past observations could make it more challenging to integrate new information, such as previously unseen factors of variation into the latent space.
-
-We investigate two specific settings for transfer learning using the 3DShapes dataset. In the first, an entire factor of variation is not present in the initial training set, so all samples contain boxes, and then the model is adapted in three stages one for each of the missing shapes (cylinder, sphere and capsule) with only 600 samples of each shape. In the second setting, all factors of variation are present in the original dataset, however in the transfer dataset one of the factors is extended, in this case, the transfer dataset contains a new shape. So for the first 100k iterations the model only observes samples where the shape is a box, cylinder, or sphere. Then the model is given 600 samples with the missing shape (capsule) and trained for 50k steps.
-
-We evaluate the performance of our models using the disentanglement and FID scores. Additionally, we attempt to get a sense for how each of these methods affects how the models learn their representations and adapt to the information in the new samples using a metric called latent motion. The latent motion is a measure how how quickly the latent space changes during training and is defined as the average $L_2$ distance between the latent vectors for the same observations from one training step to the next. However, since the intrinsic scale of the latent spaces for the models in question is not always the same, we demean the latent space rescale the standard deviation to one along each dimension before computing the motion.
-
-\subsubsection*{Results}\label{sec:trans-res}
-
-Comparing the results of the transfer models in table~\ref{tbl:arch_transfer} to the performance of the models trained on the whole training dataset from the start in figure~\ref{fig:3ds-fid} and table~\ref{tbl:dis}, it appears the visual quality is very comparable, however the disentanglement scores are all a little lower. This is not particularly surprising, since the transfer models have far fewer iterations to integrate the new information from the transfer samples into the latent space and disentangle it. Interestingly, the model that used~\dropin~as a regularization produced signficantly higher quality samples from reconstructions, than any of the VAE-based models, suggesting that~\dropin~may also help with transfer tasks more than traditional disentanglement.
-
-On a related note, looking at the latent motion of the models during training in figure~\ref{fig:motion}, there is a clear distinction between VAE-based models and all others. The latent motion of VAE-based models is significantly higher throughout all of training than for the other models, suggesting the VAE regularization is far more aggressive causing the latent space to be in a constant state of flux throughout training. Meanwhile, other types of regularization like WAEs and FWAEs have significantly lower latent motion, similar to the autoencoder without any regularization, suggesting the latent space is more robust to the new samples.
-
-Our results are still fairly noisy
-
-VAEs regularize aggressively, so the latent motion throughout training is fairly large (that means the latent space changes significantly throughout training)
-
-Using drop-in as a regularizer does introduce some instabilities, but it does not change latent space as aggressively as VAEs, which may help for transfer.
-
-\begin{figure}[ht]
-\begin{center}
-\centerline{\resizebox{0.8\columnwidth}{3in}{\includegraphics[width=\columnwidth]{figures/latent_motion.pdf}}}
-\caption{Latent motion during training for each of models on 3DShapes. The black dashed lines signify the stages of when new samples were included during training. For the first transfer setting (top), the model starts off with all training samples containing boxes, in the second stage 600 samples containing cylinders are included, followed by spheres and finally capsules in the final stage. In the second setting, the model starts with all boxes, cylinders, and spheres and in the second stage gets 600 samples containing capsules. }
-\label{fig:motion}
-\end{center}
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_fwae_interventions.png}}
+    \caption{Shapes-3D FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes_fwae_latent}
 \end{figure}
 
 
-\begin{table}[t]
-\caption{FID and Disentanglement scores for 3DShapes comparing the Models after all transfer stages (for both transfer settings)}
-\label{tbl:arch_transfer}
-% \vskip 0.15in
-\begin{center}
-\begin{small}
-\begin{sc}
-\begin{tabular}{lcccccc}
-\toprule
-%Model & FID-R (\downarrow) & FID-D (\downarrow) & FID-P (\downarrow) & DCI-d (\uparrow) & IRS (\uparrow) & MIG (\uparrow) \\
-Model & FID-R & FID-D & DCI-D & IRS \\
-\midrule
-WAE & 27.04 & 44.14 & 0.34 & 0.57 \\
-VAE & 25.44 & {\bf 30.08} & 0.71 & 0.76 \\
-$\beta$-VAE & 38.88 & 43.30 & {\bf 0.74} & {\bf 0.87} \\
-DAE & {\bf 25.17} & 36.04 & 0.55 & 0.57 \\
-FWAE & 27.78 & 33.02 & 0.68 & 0.74 \\
-FVAE & 41.73 & 52.62 & 0.25 & 0.66 \\
-\midrule
-WAE & {\bf24.35} & 33.11 & 0.34 & 0.56 \\
-VAE & 24.53 & {\bf27.96} & 0.56 & 0.68 \\
-$\beta$-VAE & 30.43 & 34.42 & 0.43 & 0.68 \\
-DAE & 41.45 & 54.26 & 0.35 & 0.64 \\
-FWAE & 28.52 & 37.41 & 0.47 & 0.69 \\
-FVAE & 28.78 & 31.85 & {\bf0.80} & {\bf0.77} \\
-\bottomrule
-\end{tabular}
-\end{sc}
-\end{small}
-\end{center}
-\vskip -0.1in
-\end{table}
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_vae_interventions.png}}
+    \caption{Shapes-3D VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes_vae_latent}
+\end{figure}
 
 
-
-\section{Discussion and Conclusion}\label{sec:disc}
-
-Since they use such a simple (prior-based) sampling technique,
-WAEs attempt to fill the whole latent space by folding up the data manifold and VAEs have no choice but to make the latent space compact, to avoid generating garbage during sampling. \dropin~does away with this requirement, and hence it is less constrained and can allow more structured latent spaces.
-
-Generative models require a sampling method, which is traditionally to regularize towards some prior (which is often chosen more for convenience than based on actual prior knowledge) and then to conflate samples from the prior with latent samples.~\dropin~provides a new ``intervention-based'' sampling technique, motivated by viewing an autoencoder as a combination of an anticausal encoder and a causal generative model that should be robust with respect to interventions. We have shown that~\dropin~serves as a simple, yet effective alternative to generate latent samples that even simple methods vanilla autoencoders can use to generate quality images.
-
-%Since~\dropin~treats each dimension of the latent space independently, we would expect it to only perform well for highly factorized latent spaces, such as in disentangled representations. However, it turns out that although disentanglement does help improve the performance of samples generated using~\dropin, even simple methods like WAEs and a vanilla autoencoder benefit significantly from this new method for sampling.
-
-While using~\dropin~as an additional form of regularization to encourage a more structured latent space could help in theory, our method of using an adversarial discriminator to judge the samples generated from hybridized latent vectors made the training significantly less stable.
-
-More encouragingly, we combined the Factor regularization from Factor-VAEs with WAEs to produce a generative model with relatively high disentanglement score, without decreasing the quality of the generated images. This offers a promising alternative to VAEs which could scale significantly better to more challenging, real datasets.
-
-Additionally, we discovered a radically different way to produce a highly structured and disentangled latent space without any regularization using a new kind of decoder architecture. This demonstrates that putting more consideration into how the generator actually uses the information in the latent space can significantly improve not just generative models in terms of disentanglement, but perhaps even more generally in modelling SCMs.
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_wae_interventions.png}}
+    \caption{Shapes-3D WAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes_wae_latent}
+\end{figure}
 
 
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_ae_interventions.png}}
+    \caption{Shapes-3D AE (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes_ae_latent}
+\end{figure}
 
 
-
-% [discuss instabilities caused by GAN-like training]
-
-% [non-independence produced by "deep" hybridization procedure]
-
-% [mention that dropin can help in training]
-
-% [explore how architectural structure helps with transfer]
-
-% [find a better way to learn architectural structure (gans are too unstable)]
-
-% %\section{Conclusion}\label{sec:concl}
-
-% %[dropin allows us to produce sensible samples when intervening in the latent space]
-
-% [biggest issue with dropin is that autoencoders and GANs dont cooperate well]
-
-% [since dropin models worked better for celeba than 3dshapes, 3dshapes is probably not complex enough for the blurriness of vaes to hurt]
-
-% \begin{figure}[ht]
-% \vskip 0.2in
-% \begin{center}
-% \centerline{\includegraphics[width=\columnwidth]{icml_numpapers}}
-% \caption{Historical locations and number of accepted papers for International
-% Machine Learning Conferences (ICML 1993 -- ICML 2008) and International
-% Workshops on Machine Learning (ML 1988 -- ML 1992). At the time this figure was
-% produced, the number of accepted papers for ICML 2008 was unknown and instead
-% estimated.}
-% \label{icml-historical}
-% \end{center}
-% \vskip -0.2in
-% \end{figure}
-
-% Acknowledgements should only appear in the accepted version.
-% \section*{Acknowledgements}
-
-% \textbf{Do not} include acknowledgements in the initial version of
-% the paper submitted for blind review.
-
-% If a paper is accepted, the final camera-ready version can (and
-% probably should) include acknowledgements. In this case, please
-% place such acknowledgements in an unnumbered section at the
-% end of the paper. Typically, this will include thanks to reviewers
-% who gave useful comments, to colleagues who contributed to the ideas,
-% and to funding agencies and corporate sponsors that provided financial
-% support.
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_fae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes_fae_interventions.png}}
+    \caption{Shapes-3D FAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes_fae_latent}
+\end{figure}
 
 
-% In the unusual situation where you want a paper to appear in the
-% references without citing it in the main text, use \nocite
-% \nocite{langley00}
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_ae_interventions.png}}
+    \caption{CelebA AE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_ae_latent}
+\end{figure}
 
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_fvae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_fvae_interventions.png}}
+    \caption{CelebA FVAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_fvae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_fwae_interventions.png}}
+    \caption{CelebA FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_vae_interventions.png}}
+    \caption{CelebA VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_4vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_4vae_interventions.png}}
+    \caption{CelebA 4-VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_4vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_16vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba_16vae_interventions.png}}
+    \caption{CelebA 16-VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba_16vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_ae_interventions.png}}
+    \caption{MPI-3D Toy AE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-toy_ae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_fwae_interventions.png}}
+    \caption{MPI-3D Toy FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-toy_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_vae_interventions.png}}
+    \caption{MPI-3D Toy VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-toy_vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-toy_wae_interventions.png}}
+    \caption{MPI-3D Toy WAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-toy_wae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_ae_interventions.png}}
+    \caption{MPI-3D Real AE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-real_ae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_fvae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_fvae_interventions.png}}
+    \caption{MPI-3D Real FVAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-real_fvae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_fwae_interventions.png}}
+    \caption{MPI-3D Real FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-real_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_vae_interventions.png}}
+    \caption{MPI-3D Real VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-real_vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/mpi3d-real_wae_interventions.png}}
+    \caption{MPI-3D Real WAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:mpi3d-real_wae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_ae_interventions.png}}
+    \caption{SpaceInvaders AE (a) Latent Distributions (b) Image Effects}
+    \label{fig:spaceinv_ae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_fvae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_fvae_interventions.png}}
+    \caption{SpaceInvaders FVAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:spaceinv_fvae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_fwae_interventions.png}}
+    \caption{SpaceInvaders FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:spaceinv_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/spaceinv_wae_interventions.png}}
+    \caption{SpaceInvaders WAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:spaceinv_wae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_fwae_interventions.png}}
+    \caption{Pacman FWAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:pacman_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_vae_interventions.png}}
+    \caption{Pacman VAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:pacman_vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/pacman_wae_interventions.png}}
+    \caption{Pacman WAE (a) Latent Distributions (b) Image Effects}
+    \label{fig:pacman_wae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s3-d0_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s3-d0_interventions.png}}
+    \caption{Shapes-3D AE (0,3) (a) Latent Distributions (b) Image Effects}
+    \label{fig:arch_s3-d0_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d8_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d8_interventions.png}}
+    \caption{Shapes-3D AE (8,1) (a) Latent Distributions (b) Image Effects}
+    \label{fig:arch_s1-d8_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d0_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d0_interventions.png}}
+    \caption{Shapes-3D AE (0,1) (a) Latent Distributions (b) Image Effects}
+    \label{fig:arch_s1-d0_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d2_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/arch_s1-d2_interventions.png}}
+    \caption{Shapes-3D AE (2,1) (a) Latent Distributions (b) Image Effects}
+    \label{fig:arch_s1-d2_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_ae_interventions.png}}
+    \caption{Shapes-3D AE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_ae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_fwae_interventions.png}}
+    \caption{Shapes-3D FWAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_fvae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_fvae_interventions.png}}
+    \caption{Shapes-3D FVAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_fvae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_vae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_vae_interventions.png}}
+    \caption{Shapes-3D VAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_vae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_bvae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_bvae_interventions.png}}
+    \caption{Shapes-3D 4-VAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_bvae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/3dshapes-adain_wae_interventions.png}}
+    \caption{Shapes-3D WAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:3dshapes-adain_wae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_ae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_ae_interventions.png}}
+    \caption{CelebA AE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba-adain_ae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_fwae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_fwae_interventions.png}}
+    \caption{CelebA FWAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba-adain_fwae_latent}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_wae_latent.png}}
+    \subfigure[]{\includegraphics[width=0.49\textwidth]{figures/celeba-adain_wae_interventions.png}}
+    \caption{CelebA WAE (4,2) (a) Latent Distributions (b) Image Effects}
+    \label{fig:celeba-adain_wae_latent}
+\end{figure}
+
+\bibliographystyle{plain}
 \bibliography{refs}
-\bibliographystyle{icml2020}
-
-
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % DELETE THIS PART. DO NOT PLACE CONTENT AFTER THE REFERENCES!
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% \appendix
-% \section{Do \emph{not} have an appendix here}
-
-% \textbf{\emph{Do not put content after the references.}}
-% %
-% Put anything that you might normally include after the references in a separate
-% supplementary file.
-
-% We recommend that you build supplementary material in a separate document.
-% If you must create one PDF and cut it up, please be careful to use a tool that
-% doesn't alter the margins, and that doesn't aggressively rewrite the PDF file.
-% pdftk usually works fine.
-
-% \textbf{Please do not use Apple's preview to cut off supplementary material.} In
-% previous years it has altered margins, and created headaches at the camera-ready
-% stage.
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 \end{document}
 
 
 
 
-% This document was modified from the file originally made available by
-% Pat Langley and Andrea Danyluk for ICML-2K. This version was created
-% by Iain Murray in 2018, and modified by Alexandre Bouchard in
-% 2019 and 2020. Previous contributors include Dan Roy, Lise Getoor and Tobias
-% Scheffer, which was slightly modified from the 2010 version by
-% Thorsten Joachims & Johannes Fuernkranz, slightly modified from the
-% 2009 version by Kiri Wagstaff and Sam Roweis's 2008 version, which is
-% slightly modified from Prasad Tadepalli's 2007 version which is a
-% lightly changed version of the previous year's version by Andrew
-% Moore, which was in turn edited from those of Kristian Kersting and
-% Codrina Lauth. Alex Smola contributed to the algorithmic style files.
+% \begin{table*}[]\label{tab:enc-conv}
+% \begin{center}
+% \begin{small}
+% \begin{sc}
+% \begin{tabular}{c|cc}
+% \hline
+% Layer & Input & Output \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% 2D-Conv (kernel = 2x2, pad=(1,1)) & & \\
+% ELU activation & & \\
+% 2D-Conv (kernel = 2x2) & & \\
+% Max pooling (2x2) & & \\
+% Group Norm (8 groups) & & \\
+% ELU activation & & \\
+% \hline
+% Flatten & & \\
+% Fully connected & & \\
+% ELU activation & & \\
+% Fully connected & & \\
+% ELU activation & & \\
+% Fully connected & & \\
+% \hline
+
+% \end{tabular}
+% \end{sc}
+% \end{small}
+% \end{center}
+% \caption{Outline of the encoder architecture. }
+% \end{table*}
+
+
+
+
+
