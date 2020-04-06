@@ -1,7 +1,7 @@
 
 parents: ['base']
 
-legacy: False
+#legacy: False
 
 device: cuda
 seed: 0

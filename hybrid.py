@@ -96,7 +96,7 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 		self.set_optim()
 		self.set_scheduler()
 
-		self._dis_tracker = Disentanglement_Tracker(A, self, self.stats)
+		self._dis_tracker = None #Disentanglement_Tracker(A, self, self.stats)
 
 	def _img_size_limiter(self, imgs):
 		H, W = imgs.shape[-2:]
@@ -125,7 +125,8 @@ class Wasserstein_PP(fd.Generative, fd.Encodable, fd.Decodable, fd.Regularizable
 			B, C, H, W = info.original.shape
 			N = min(B, 8)
 
-			_dis_results = self._dis_tracker(self.stats)
+			if self._dis_tracker is not None:
+				_dis_results = self._dis_tracker(self.stats)
 
 			if 'reconstruction' in info:
 				viz_x, viz_rec = info.original[:N], info.reconstruction[:N]
@@ -973,7 +974,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 		for ichn, ochn in zip(chns, chns[1:]):
 			layers.append(
 				models.DoubleDeconvLayer(in_channels=ichn, out_channels=ochn, factor=next(factors),
-				                            up_type=up_type, norm_type=norm_type,
+				                            up_type=up_type, norm=norm_type,
 				                            nonlin=nonlin, output_nonlin=nonlin,
 				                            internal_channels=next(internal_channels), squeeze=next(squeeze),
 				                            residual=residual,
@@ -986,7 +987,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 					A.adain.ada_noise = dim
 					A.adain.features = ochn
 
-				adain = A.pull('adain', force_new=True)
+				adain = A.pull('adain', ref=False)
 
 				if 'ada_noise' in A.adain:
 					del A.adain.ada_noise
@@ -997,7 +998,7 @@ class AdaIn_Double_Decoder(models.Double_Decoder):
 				layers.append(adain)
 		layers.append(
 			models.DoubleDeconvLayer(in_channels=last_chn[0], out_channels=last_chn[1], factor=next(factors),
-			                            up_type=up_type, norm_type=output_norm_type,
+			                            up_type=up_type, norm=output_norm_type,
 			                            nonlin=nonlin, output_nonlin=output_nonlin,
 			                            internal_channels=next(internal_channels), squeeze=next(squeeze),
 			                            residual=residual,
